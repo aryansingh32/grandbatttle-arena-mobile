@@ -1,0 +1,77 @@
+{
+  "project_info": {
+    "project_number": "621118586664",
+    "firebase_url": "https://grand-battle-arena-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "grand-battle-arena",
+    "storage_bucket": "grand-battle-arena.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621118586664:android:ca1d8c0dea56439062da1d",
+        "android_client_info": {
+          "package_name": "com.esport.EsportTournament"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "621118586664-g8nbo1g1ja27ahajhsjul4roaq4c2j5c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrLPprcDSE83ay79AmDx1NTACz0Be1fTw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "621118586664-g8nbo1g1ja27ahajhsjul4roaq4c2j5c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621118586664:android:b1c9a1adafde17f362da1d",
+        "android_client_info": {
+          "package_name": "com.esport.grand_battle_arena"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "621118586664-3i2moicfmmv0pd7lhgsouid5fetjl0bh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.esport.grand_battle_arena",
+            "certificate_hash": "48fec4cefb868f9dfe1d51383259c749db9f1996"
+          }
+        },
+        {
+          "client_id": "621118586664-g8nbo1g1ja27ahajhsjul4roaq4c2j5c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrLPprcDSE83ay79AmDx1NTACz0Be1fTw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "621118586664-g8nbo1g1ja27ahajhsjul4roaq4c2j5c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
