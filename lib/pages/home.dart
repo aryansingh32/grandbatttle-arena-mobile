@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:grand_battle_arena/components/balancecard.dart';
+import 'package:grand_battle_arena/components/bannerslider.dart';
 import 'package:grand_battle_arena/components/homegames.dart';
 import 'package:grand_battle_arena/components/homeleaderboard.dart';
 import 'package:grand_battle_arena/components/mybookingscroller.dart';
@@ -34,7 +35,8 @@ class _HomeState extends State<Home> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TopBar(), // For TopBar
-                    Balancecard(), // Balance Card
+                    BannerSlider(),
+                    // Balancecard(), // Balance Card
                     Homegames(), // Games 
                     Padding( 
                       padding: const EdgeInsets.all(10.0),

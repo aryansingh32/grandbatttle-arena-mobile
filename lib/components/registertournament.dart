@@ -1,22 +1,22 @@
-// tournament_registration_page.dart
+// tournament_registration_page.dart - PRODUCTION READY VERSION
+// ✅ Fixed: Team size parsing, instant updates, validation, race conditions
 
 import 'package:flutter/material.dart';
+import 'package:grand_battle_arena/services/real_time_slot_manager.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
-import 'package:grand_battle_arena/models/slots_model.dart'; // Import the slots model
+import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
 import 'dart:async';
 
-// Enum to define the types of teams for clarity and type safety.
 enum TeamType {
   solo,
   duo,
   squad,
-  hexa, // Added hexa for 6-player teams
+  hexa,
 }
 
-// The main StatefulWidget for the tournament registration page.
 class TournamentRegistrationPage extends StatefulWidget {
   final int? tournamentId;
   final TournamentModel? tournament;
@@ -36,13 +36,13 @@ class TournamentRegistrationPage extends StatefulWidget {
       _TournamentRegistrationPageState();
 }
 
-// Data class to manage the state of each slot in the UI.
 class SlotData {
   int slotNumber;
   String? playerName;
   bool isOccupied;
   bool isSelected;
-  bool isLocked; // New field for temporary locks during booking
+  bool isLocked;
+  bool isOptimistic; // NEW: Track optimistically booked slots
 
   SlotData({
     required this.slotNumber,
@@ -50,29 +50,25 @@ class SlotData {
     this.isOccupied = false,
     this.isSelected = false,
     this.isLocked = false,
+    this.isOptimistic = false,
   });
 }
 
 class _TournamentRegistrationPageState extends State<TournamentRegistrationPage> {
   TournamentModel? tournament;
-  // This list now holds the UI state for the slots
   List<SlotData> slots = [];
-  // This list holds the raw data from the API
   List<SlotsModel> _apiSlots = [];
 
   Set<int> selectedSlotIndices = {};
-  int? selectedTeamIndex; // Track which team/group is currently selected
+  int? selectedTeamIndex;
 
-  // State variables to manage loading UI.
   bool isLoading = false;
   bool initialDataLoaded = false;
   bool isBookingInProgress = false;
 
-  // Auto refresh timer
   Timer? _refreshTimer;
-  static const int REFRESH_INTERVAL_SECONDS = 5;
+  static const int REFRESH_INTERVAL_SECONDS = 3; // Faster polling
 
-  // Error handling
   String? lastError;
   DateTime? lastErrorTime;
 
@@ -81,59 +77,70 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     super.initState();
     tournament = widget.tournament;
     _initializeData();
-    _startAutoRefresh();
+    RealTimeSlotManager().startRealTimeSync(widget.tournamentId!);
+    RealTimeSlotManager().addListener(_onSlotsUpdated);
   }
 
   @override
   void dispose() {
+    RealTimeSlotManager().stopRealTimeSync(widget.tournamentId!);
+    RealTimeSlotManager().removeListener(_onSlotsUpdated);
     _refreshTimer?.cancel();
     super.dispose();
   }
 
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(
-      const Duration(seconds: REFRESH_INTERVAL_SECONDS),
-      (timer) {
-        if (!isBookingInProgress && mounted) {
-          _refreshSlots();
-        }
-      },
-    );
+  void _onSlotsUpdated() {
+    if (!mounted) return;
+    
+    final latestSlots = RealTimeSlotManager().getCachedSlots(widget.tournamentId!);
+    if (latestSlots != null) {
+      setState(() {
+        _apiSlots = latestSlots;
+        initializeSlots();
+      });
+    }
   }
 
   Future<void> _refreshSlots() async {
     try {
-      if (widget.tournamentId != null) {
-        // Only refresh the dynamic slot data in the background
+      if (widget.tournamentId != null && !isBookingInProgress) {
         await _loadSlotDetails();
         if (_apiSlots.isNotEmpty) {
           initializeSlots();
         }
       }
     } catch (e) {
-      // Silent refresh failure - don't show error to user
       print('Background refresh failed: $e');
     }
   }
 
-  // Helper method to get team type from string
+  // 🔥 FIX #1: Proper team type parsing from backend
   TeamType _getTeamType(String teamSize) {
-    switch (teamSize.toLowerCase()) {
-      case 'solo':
+    // Backend sends: "SOLO", "DUO", "SQUAD", "HEXA"
+    // or "Solo", "Duo", "Squad", "Hexa"
+    String normalized = teamSize.trim().toUpperCase();
+    
+    print('🔍 Parsing teamSize: "$teamSize" → normalized: "$normalized"');
+    
+    switch (normalized) {
+      case 'SOLO':
+      case '1':
         return TeamType.solo;
-      case 'duo':
+      case 'DUO':
+      case '2':
         return TeamType.duo;
-      case 'squad':
+      case 'SQUAD':
+      case '4':
         return TeamType.squad;
-      case 'hexa':
+      case 'HEXA':
       case '6':
         return TeamType.hexa;
       default:
-        return TeamType.squad;
+        print('⚠️ Unknown teamSize: "$teamSize", defaulting to SOLO');
+        return TeamType.solo;
     }
   }
 
-  // Helper getters
   String get teamSizeString {
     if (tournament == null) return "TBD";
     final teamType = _getTeamType(tournament!.teamSize);
@@ -164,7 +171,6 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
   }
 
-  // Handles the initial data loading logic.
   Future<void> _initializeData() async {
     try {
       setState(() {
@@ -173,14 +179,12 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
       });
 
       if (widget.tournamentId != null) {
-        // Fetch static tournament data (name, prize pool)
         await _loadTournamentData();
-        // Fetch dynamic slot data (status, player names)
         await _loadSlotDetails();
       }
 
-      // Initialize the UI only if both calls succeed
       if (tournament != null) {
+        print('✅ Tournament loaded: teamSize="${tournament!.teamSize}", playersPerTeam=$playersPerTeam');
         initializeSlots();
       }
     } catch (e) {
@@ -224,7 +228,6 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
   }
 
-  // Fetches basic tournament data from the API.
   Future<void> _loadTournamentData() async {
     try {
       final tournamentData =
@@ -239,7 +242,6 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
   }
 
-  /// **NEW**: Fetches the detailed slot summary from the API.
   Future<void> _loadSlotDetails() async {
     try {
       final slotsData = await ApiService.getTournamentSlotSummary(widget.tournamentId!);
@@ -253,54 +255,44 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
   }
 
-
-  /// **REWRITTEN**: Sets up the UI slot state based on the detailed API data.
   void initializeSlots() {
     if (tournament == null) return;
 
-    // Preserve selected team if still valid, otherwise clear selections
     if (selectedTeamIndex != null && !_isTeamAvailable(selectedTeamIndex!)) {
-        selectedSlotIndices.clear();
-        selectedTeamIndex = null;
+      selectedSlotIndices.clear();
+      selectedTeamIndex = null;
     }
     
-    // If the API hasn't returned any slots yet, generate a default empty list
     if (_apiSlots.isEmpty) {
-        slots = List.generate(tournament!.maxPlayers, (index) => SlotData(
-            slotNumber: index + 1,
-            isSelected: selectedSlotIndices.contains(index),
-        ));
-        return;
+      slots = List.generate(tournament!.maxPlayers, (index) => SlotData(
+        slotNumber: index + 1,
+        isSelected: selectedSlotIndices.contains(index),
+      ));
+      return;
     }
 
-    // Map the detailed data from the API to the UI SlotData model
     slots = _apiSlots.map((apiSlot) {
       final slotIndex = apiSlot.slotNumber - 1;
       return SlotData(
         slotNumber: apiSlot.slotNumber,
         isOccupied: apiSlot.status.toUpperCase() == 'BOOKED',
         playerName: apiSlot.playerName,
-        isLocked: false, // Always reset lock on refresh
+        isLocked: false,
         isSelected: selectedSlotIndices.contains(slotIndex),
       );
     }).toList();
 
-    // Ensure the list is sorted by slot number, just in case
     slots.sort((a, b) => a.slotNumber.compareTo(b.slotNumber));
   }
 
-
   int get occupiedSlotsCount => slots.where((slot) => slot.isOccupied).length;
 
-  // Enhanced team/group selection logic
   void _handleTeamSelection(int teamIndex) {
-    // Team selection is only for team modes and if the team is available
     if (_getTeamType(tournament!.teamSize) == TeamType.solo || !_isTeamAvailable(teamIndex)) {
       return; 
     }
 
     setState(() {
-      // If a different team is selected, clear old selections and select the new team.
       if (selectedTeamIndex != teamIndex) {
         selectedSlotIndices.clear();
         for (var slot in slots) {
@@ -311,40 +303,34 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     });
   }
 
-  // Individual slot selection within a team
   void _handleSlotSelection(int slotIndex) {
     if (slotIndex >= slots.length) return;
 
     SlotData slot = slots[slotIndex];
 
-    // Prevent selection of occupied or locked slots
     if (slot.isOccupied || slot.isLocked) return;
 
     int teamIndex = slotIndex ~/ playersPerTeam;
 
-    // In team modes, you must first select the team block
     if (_getTeamType(tournament!.teamSize) != TeamType.solo && selectedTeamIndex != teamIndex) {
       _handleTeamSelection(teamIndex);
     }
     
-    // Toggle selection state for the individual slot
     setState(() {
       if (selectedSlotIndices.contains(slotIndex)) {
         selectedSlotIndices.remove(slotIndex);
         slot.isSelected = false;
-        // If it was the last selected slot in a team, deselect the team as well
         if (selectedSlotIndices.isEmpty) {
-            selectedTeamIndex = null;
+          selectedTeamIndex = null;
         }
       } else {
         selectedSlotIndices.add(slotIndex);
         slot.isSelected = true;
-        selectedTeamIndex = teamIndex; // Ensure team is marked as selected
+        selectedTeamIndex = teamIndex;
       }
     });
   }
 
-  // Check if a team has any available (not occupied or locked) slots
   bool _isTeamAvailable(int teamIndex) {
     int startSlot = teamIndex * playersPerTeam;
     for (int i = 0; i < playersPerTeam; i++) {
@@ -356,87 +342,104 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     return false;
   }
 
-  // Enhanced booking with better error handling and validation
+  // 🔥 FIX #2: Instant optimistic updates + proper validation
   Future<void> _bookMultipleSlots(Map<int, String> slotPlayerMap) async {
-    if (slotPlayerMap.isEmpty) {
-      _showErrorSnackBar('No slots selected for booking.');
-      return;
-    }
-
-    // Validate player names
+    // 🔥 CRITICAL: Validate all names before booking
     for (var entry in slotPlayerMap.entries) {
-        String trimmedName = entry.value.trim();
-        if (trimmedName.isEmpty) {
-            _showErrorSnackBar('Player name for slot ${slots[entry.key].slotNumber} cannot be empty.');
-            return;
-        }
-        if (trimmedName.length < 2 || trimmedName.length > 20) {
-            _showErrorSnackBar('Player name for slot ${slots[entry.key].slotNumber} must be 2-20 characters.');
-            return;
-        }
-    }
-
-    if (FirebaseAuthService.currentUser == null) {
-      _showErrorSnackBar('Please sign in to register for the tournament.');
-      return;
+      String name = entry.value.trim();
+      if (name.isEmpty) {
+        _showErrorSnackBar('Player name for Slot ${slots[entry.key].slotNumber} cannot be empty!');
+        return;
+      }
+      if (name.length < 2) {
+        _showErrorSnackBar('Player name must be at least 2 characters long!');
+        return;
+      }
+      if (name.length > 30) {
+        _showErrorSnackBar('Player name must be less than 30 characters!');
+        return;
+      }
     }
 
     setState(() {
       isBookingInProgress = true;
       isLoading = true;
-      lastError = null;
-      // Lock selected slots in the UI to prevent concurrent actions
-      slotPlayerMap.keys.forEach((slotIndex) {
-        if (slotIndex < slots.length) {
-          slots[slotIndex].isLocked = true;
-        }
+      lastError = null; // Clear previous errors
+    });
+
+    // 1. OPTIMISTIC UPDATE - Instant UI feedback
+    setState(() {
+      slotPlayerMap.forEach((slotIndex, playerName) {
+        slots[slotIndex].isLocked = true;
+        slots[slotIndex].playerName = playerName;
+        slots[slotIndex].isOptimistic = true;
+        
+        RealTimeSlotManager().optimisticallyBookSlot(
+          widget.tournamentId!,
+          slots[slotIndex].slotNumber,
+          playerName,
+        );
       });
     });
 
     try {
-      // Prepare payload for the team booking API endpoint
-      final List<Map<String, dynamic>> playersPayload = slotPlayerMap.entries
+      // 2. ACTUAL API CALL
+      final playersPayload = slotPlayerMap.entries
           .map((entry) => {
                 'slotNumber': slots[entry.key].slotNumber,
                 'playerName': entry.value.trim(),
               })
           .toList();
 
+      print('📤 Booking request: $playersPayload');
+
       await ApiService.bookTeam(
         tournamentId: widget.tournamentId!,
         players: playersPayload,
       );
 
-      // On success, refresh data and show a success message
-      await _loadSlotDetails();
-      initializeSlots();
+      print('✅ Booking successful!');
 
+      // 3. SUCCESS: Force immediate refresh to confirm booking
+      await RealTimeSlotManager().forceRefreshNow(widget.tournamentId!);
+      
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close the registration dialog
-      _showSuccessSnackBar('${playersPayload.length} slot(s) booked successfully!');
+      
+      // Clear selections
+      setState(() {
+        selectedSlotIndices.clear();
+        selectedTeamIndex = null;
+      });
+      
+      Navigator.of(context).pop();
+      _showSuccessSnackBar('${playersPayload.length} slot(s) booked successfully! 🎉');
 
     } catch (e) {
-      String errorMessage = _getErrorMessage(e);
+      print('❌ Booking failed: $e');
+      
+      // 4. ERROR: Rollback optimistic updates
       setState(() {
-        lastError = errorMessage;
-        lastErrorTime = DateTime.now();
+        slotPlayerMap.forEach((slotIndex, _) {
+          slots[slotIndex].isLocked = false;
+          slots[slotIndex].playerName = null;
+          slots[slotIndex].isOptimistic = false;
+          
+          RealTimeSlotManager().rollbackOptimisticBooking(
+            widget.tournamentId!,
+            slots[slotIndex].slotNumber,
+          );
+        });
+        
+        lastError = _getErrorMessage(e);
       });
-       if (mounted) {
-         _showErrorSnackBar(errorMessage);
-         // Auto-refresh data if the error is related to slot availability
-        if (errorMessage.contains('no longer available')) {
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) _refreshSlots();
-          });
-        }
-       }
+      
+      _showErrorSnackBar(lastError!);
+      
+      // Force refresh to get actual server state
+      await _refreshSlots();
     } finally {
       if (mounted) {
         setState(() {
-          // Always unlock slots after the attempt, regardless of outcome
-          slotPlayerMap.keys.forEach((slotIndex) {
-              if(slotIndex < slots.length) slots[slotIndex].isLocked = false;
-          });
           isBookingInProgress = false;
           isLoading = false;
         });
@@ -483,7 +486,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     );
   }
 
-    // --- DIALOG BUILDER ---
+  // 🔥 FIX #3: Improved registration dialog with validation
   void _showMultipleSlotRegistrationDialog() {
     final List<int> sortedIndices = selectedSlotIndices.toList()..sort();
     final Map<int, TextEditingController> controllers = {
@@ -492,143 +495,257 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     };
     final int totalCost = sortedIndices.length * (tournament?.entryFee ?? 0);
 
+    // Auto-focus first field
+    final focusNodes = {
+      for (var index in sortedIndices)
+        index: FocusNode()
+    };
+
+    // Focus first field after dialog opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (sortedIndices.isNotEmpty) {
+        focusNodes[sortedIndices.first]?.requestFocus();
+      }
+    });
+
     showDialog(
       context: context,
       barrierDismissible: !isBookingInProgress,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF1a1a2e),
-                      Color(0xFF16213e),
-                      Color(0xFF0f3460),
-                    ],
+            bool allFieldsFilled = controllers.values.every((c) => c.text.trim().isNotEmpty);
+
+            return WillPopScope(
+              onWillPop: () async => !isBookingInProgress,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.7,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Appcolor.secondary, width: 2),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'REGISTER PLAYERS',
-                            style: TextStyle(
-                              color: Appcolor.secondary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        if (!isBookingInProgress)
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close, color: Colors.white),
-                          ),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF1a1a2e),
+                        Color(0xFF16213e),
+                        Color(0xFF0f3460),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    
-                    // Player Input Fields
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: sortedIndices.map((slotIndex) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 15.0),
-                              child: TextField(
-                                controller: controllers[slotIndex],
-                                style: const TextStyle(color: Colors.white, fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: 'Player name',
-                                  hintStyle: TextStyle(color: Colors.grey[400]),
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-                                  prefixIcon: Container(
-                                    width: 50,
-                                    margin: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Appcolor.secondary,
-                                      borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Appcolor.secondary, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Appcolor.secondary.withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'REGISTER PLAYERS',
+                              style: TextStyle(
+                                color: Appcolor.secondary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                          if (!isBookingInProgress)
+                            IconButton(
+                              onPressed: () {
+                                focusNodes.values.forEach((node) => node.dispose());
+                                Navigator.of(context).pop();
+                              },
+                              icon: const Icon(Icons.close, color: Colors.white),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Player Input Fields
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: sortedIndices.asMap().entries.map((entry) {
+                              int idx = entry.key;
+                              int slotIndex = entry.value;
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 15.0),
+                                child: TextField(
+                                  controller: controllers[slotIndex],
+                                  focusNode: focusNodes[slotIndex],
+                                  enabled: !isBookingInProgress,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  textInputAction: idx < sortedIndices.length - 1 
+                                      ? TextInputAction.next 
+                                      : TextInputAction.done,
+                                  onChanged: (value) {
+                                    setDialogState(() {
+                                      // Trigger rebuild to enable/disable button
+                                    });
+                                  },
+                                  onSubmitted: (_) {
+                                    if (idx < sortedIndices.length - 1) {
+                                      focusNodes[sortedIndices[idx + 1]]?.requestFocus();
+                                    } else if (allFieldsFilled) {
+                                      // Auto-submit on last field if all filled
+                                      final Map<int, String> slotPlayerMap = {
+                                        for (var e in controllers.entries)
+                                          e.key: e.value.text
+                                      };
+                                      focusNodes.values.forEach((node) => node.dispose());
+                                      _bookMultipleSlots(slotPlayerMap);
+                                    }
+                                  },
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter player name',
+                                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                                    filled: true,
+                                    fillColor: Colors.black.withOpacity(0.3),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide.none,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        'S${slots[slotIndex].slotNumber}',
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+                                    prefixIcon: Container(
+                                      width: 50,
+                                      margin: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Appcolor.secondary,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'S${slots[slotIndex].slotNumber}',
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ),
                                     ),
+                                    suffixIcon: controllers[slotIndex]!.text.trim().isNotEmpty
+                                        ? Icon(Icons.check_circle, color: Colors.green[400], size: 20)
+                                        : Icon(Icons.radio_button_unchecked, color: Colors.grey[600], size: 20),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Cost Summary with icon
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Appcolor.secondary.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset("assets/icons/dollar.png", height: 20, width: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Total Cost: $totalCost coins',
+                              style: const TextStyle(
+                                color: Appcolor.secondary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Buttons
+                      if (isBookingInProgress)
+                        Column(
+                          children: [
+                            const CircularProgressIndicator(color: Appcolor.secondary),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Booking ${sortedIndices.length} slot(s)...',
+                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  focusNodes.values.forEach((node) => node.dispose());
+                                  Navigator.of(context).pop();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey[800],
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'CANCEL',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(),
+                            ),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: !allFieldsFilled ? null : () {
+                                  final Map<int, String> slotPlayerMap = {
+                                    for (var entry in controllers.entries)
+                                      entry.key: entry.value.text
+                                  };
+                                  focusNodes.values.forEach((node) => node.dispose());
+                                  _bookMultipleSlots(slotPlayerMap);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: allFieldsFilled ? Appcolor.secondary : Colors.grey[700],
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  'BOOK NOW',
+                                  style: TextStyle(
+                                    color: allFieldsFilled ? Colors.black : Colors.grey[400],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    // Cost Summary
-                    Text(
-                      'Total Cost: $totalCost coins',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Buttons
-                    if (isBookingInProgress)
-                      const Center(child: CircularProgressIndicator(color: Appcolor.secondary))
-                    else
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[800],
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: const Text('CANCEL', style: TextStyle(color: Colors.white)),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                final Map<int, String> slotPlayerMap = {
-                                  for (var entry in controllers.entries)
-                                    entry.key: entry.value.text
-                                };
-                                _bookMultipleSlots(slotPlayerMap);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Appcolor.secondary,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: const Text('BOOK NOW', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -638,11 +755,9 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     );
   }
 
+  // UI BUILDERS (keeping your existing UI structure)
 
-  // --- UI WIDGET BUILDER METHODS ---
-
-  Widget _buildInfoColumn(
-      {required Widget icon, required String value, required String label}) {
+  Widget _buildInfoColumn({required Widget icon, required String value, required String label}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -654,9 +769,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
             Text(
               value,
               style: TextStyle(
-                color: value.contains('${tournament!.prizePool}')
-                    ? Appcolor.secondary
-                    : Colors.white,
+                color: value.contains('${tournament!.prizePool}') ? Appcolor.secondary : Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -666,10 +779,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 10,
-          ),
+          style: TextStyle(color: Colors.grey[500], fontSize: 10),
         ),
       ],
     );
@@ -694,15 +804,14 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color.fromRGBO(243, 205, 35, 0.3),
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: Appcolor.secondary),
                   ),
                   child: Text(
-                    '${(occupiedSlotsCount)}/${tournament!.maxPlayers}', // Using direct slot count is more accurate
+                    '${occupiedSlotsCount}/${tournament!.maxPlayers}',
                     style: const TextStyle(
                       color: Appcolor.secondary,
                       fontSize: 12,
@@ -714,7 +823,6 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
             ),
             const SizedBox(height: 10),
 
-            // Error display
             if (lastError != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
@@ -743,9 +851,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
               ),
             ],
 
-            Expanded(
-              child: _buildSlotsList(),
-            ),
+            Expanded(child: _buildSlotsList()),
           ],
         ),
       ),
@@ -768,19 +874,18 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
   }
 
-  // SOLO SLOTS - Free Fire custom room style grid
   Widget _buildSoloSlotsList() {
     return GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 3.5,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 8,
-        ),
-        itemCount: slots.length,
-        itemBuilder: (context, index) {
-            return _buildSoloSlot(index);
-        },
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 3.5,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: slots.length,
+      itemBuilder: (context, index) {
+        return _buildSoloSlot(index);
+      },
     );
   }
 
@@ -791,14 +896,20 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     Color backgroundColor;
     Color borderColor;
     String statusText = '';
+    Widget? statusIcon;
 
     if (isSelected) {
       backgroundColor = const Color.fromRGBO(243, 205, 35, 0.3);
       borderColor = Appcolor.secondary;
+      statusIcon = const Icon(Icons.check_circle, color: Appcolor.secondary, size: 16);
+    } else if (slot.isOptimistic) {
+      backgroundColor = const Color.fromRGBO(76, 175, 80, 0.2);
+      borderColor = Colors.green;
+      statusText = 'BOOKING';
     } else if (slot.isLocked) {
       backgroundColor = const Color.fromRGBO(255, 152, 0, 0.2);
       borderColor = Colors.orange;
-      statusText = 'BOOKING';
+      statusText = 'PENDING';
     } else if (slot.isOccupied) {
       backgroundColor = const Color.fromRGBO(244, 67, 54, 0.1);
       borderColor = Colors.red;
@@ -809,12 +920,20 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
 
     return GestureDetector(
       onTap: () => _handleSlotSelection(slotIndex),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         height: 40,
         decoration: BoxDecoration(
           color: backgroundColor,
           border: Border.all(color: borderColor, width: 2),
           borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: Appcolor.secondary.withOpacity(0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ] : null,
         ),
         child: Row(
           children: [
@@ -865,7 +984,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
-                  color: slot.isLocked ? Colors.orange : Colors.red,
+                  color: slot.isOptimistic ? Colors.green : (slot.isLocked ? Colors.orange : Colors.red),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -878,14 +997,10 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                 ),
               ),
 
-            if (isSelected)
+            if (statusIcon != null)
               Container(
                 margin: const EdgeInsets.only(right: 8),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Appcolor.secondary,
-                  size: 16,
-                ),
+                child: statusIcon,
               ),
           ],
         ),
@@ -893,7 +1008,6 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     );
   }
 
-  // TEAM SLOTS - Free Fire custom room style for Duo/Squad/Hexa
   Widget _buildTeamSlotsList() {
     int teamsCount = tournament!.maxPlayers ~/ playersPerTeam;
     return GridView.builder(
@@ -927,300 +1041,373 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
     }
     
     return GestureDetector(
-        onTap: () => _handleTeamSelection(teamIndex),
-        child: Container(
-            decoration: BoxDecoration(
-                color: backgroundColor,
-                border: Border.all(color: borderColor, width: 2),
-                borderRadius: BorderRadius.circular(8),
+      onTap: () => _handleTeamSelection(teamIndex),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border.all(color: borderColor, width: 2),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isTeamBlockSelected ? [
+            BoxShadow(
+              color: Appcolor.secondary.withOpacity(0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
             ),
-            child: Row(
+          ] : null,
+        ),
+        child: Row(
+          children: [
+            // Team number section
+            Container(
+              width: 40,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: borderColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(6),
+                  bottomLeft: Radius.circular(6),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                    // Team number section
-                    Container(
-                        width: 40,
-                        height: double.infinity,
-                        decoration: BoxDecoration(
-                            color: borderColor,
-                            borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(6),
-                                bottomLeft: Radius.circular(6),
-                            ),
-                        ),
-                        child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                                Text(
-                                    '${teamIndex + 1}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                    ),
-                                ),
-                                if (_getTeamType(tournament!.teamSize) != TeamType.solo)
-                                    Text(
-                                        '${playersPerTeam}P',
-                                        style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 8,
-                                        ),
-                                    ),
-                            ],
-                        ),
+                  Text(
+                    '${teamIndex + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
-                    // Players section
-                    Expanded(
-                        child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: _buildPlayersDisplay(teamIndex),
-                        ),
+                  ),
+                  if (_getTeamType(tournament!.teamSize) != TeamType.solo)
+                    Text(
+                      '${playersPerTeam}P',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 8,
+                      ),
                     ),
                 ],
+              ),
             ),
+            // Players section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: _buildPlayersDisplay(teamIndex),
+              ),
+            ),
+          ],
         ),
+      ),
     );
-}
+  }
 
-Widget _buildPlayersDisplay(int teamIndex) {
+  Widget _buildPlayersDisplay(int teamIndex) {
     int startSlot = teamIndex * playersPerTeam;
     
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(playersPerTeam, (i) {
-            int slotIndex = startSlot + i;
-            if (slotIndex >= slots.length) return const SizedBox.shrink();
-            
-            final slot = slots[slotIndex];
-            final isSelected = selectedSlotIndices.contains(slotIndex);
-            
-            return Expanded(
-                child: GestureDetector(
-                  onTap: () => _handleSlotSelection(slotIndex),
-                  child: Container(
-                    color: Colors.transparent, // Makes the whole row tappable
-                    child: Row(
-                      children: [
-                        // Icon showing status (selected, occupied, available)
-                        Container(
-                          width: 16,
-                          height: 16,
-                          margin: const EdgeInsets.only(right: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Appcolor.secondary
-                                : slot.isOccupied
-                                    ? Colors.red
-                                    : slot.isLocked
-                                        ? Colors.orange
-                                        : Colors.grey[600],
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${i + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Player name or status
-                        Expanded(
-                          child: Text(
-                            slot.isOccupied && slot.playerName != null
-                                ? slot.playerName!
-                                : slot.isLocked
-                                    ? 'Booking...'
-                                    : 'Empty',
-                            style: TextStyle(
-                              color: isSelected ? Appcolor.secondary : (slot.isOccupied ? Colors.white : Colors.grey[500]),
-                              fontSize: 10,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(playersPerTeam, (i) {
+        int slotIndex = startSlot + i;
+        if (slotIndex >= slots.length) return const SizedBox.shrink();
+        
+        final slot = slots[slotIndex];
+        final isSelected = selectedSlotIndices.contains(slotIndex);
+        
+        Color iconColor;
+        if (isSelected) {
+          iconColor = Appcolor.secondary;
+        } else if (slot.isOptimistic) {
+          iconColor = Colors.green;
+        } else if (slot.isOccupied) {
+          iconColor = Colors.red;
+        } else if (slot.isLocked) {
+          iconColor = Colors.orange;
+        } else {
+          iconColor = Colors.grey[600]!;
+        }
+        
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => _handleSlotSelection(slotIndex),
+            child: Container(
+              color: Colors.transparent,
+              child: Row(
+                children: [
+                  // Status icon
+                  Container(
+                    width: 16,
+                    height: 16,
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: iconColor,
+                      shape: BoxShape.circle,
                     ),
+                    child: Center(
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Player name or status
+                  Expanded(
+                    child: Text(
+                      slot.isOccupied && slot.playerName != null
+                          ? slot.playerName!
+                          : slot.isOptimistic
+                              ? 'Booking...'
+                              : slot.isLocked
+                                  ? 'Pending...'
+                                  : 'Empty',
+                      style: TextStyle(
+                        color: isSelected 
+                            ? Appcolor.secondary 
+                            : (slot.isOccupied ? Colors.white : Colors.grey[500]),
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+  
+  Widget _buildBottomActionBar() {
+    final int totalCost = (selectedSlotIndices.length * (tournament?.entryFee ?? 0));
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Appcolor.primary,
+        border: Border(top: BorderSide(color: Colors.grey[800]!)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${selectedSlotIndices.length} SLOT(S) SELECTED',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-            );
-        }),
-    );
-}
-  
-    Widget _buildBottomActionBar() {
-      final int totalCost = (selectedSlotIndices.length * (tournament?.entryFee ?? 0));
-
-      return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-              color: Appcolor.primary,
-              border: Border(top: BorderSide(color: Colors.grey[800]!))
-          ),
-          child: Row(
-              children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                          Text(
-                              '${selectedSlotIndices.length} SLOT(S) SELECTED',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                              ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                              'TOTAL COST: $totalCost COINS',
-                              style: const TextStyle(
-                                  color: Appcolor.secondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                              ),
-                          ),
-                      ],
-                  )),
-                  ElevatedButton(
-                    onPressed: selectedSlotIndices.isEmpty || isBookingInProgress
-                        ? null
-                        : () => _showMultipleSlotRegistrationDialog(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Appcolor.secondary,
-                      disabledBackgroundColor: Colors.grey[600],
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Image.asset("assets/icons/dollar.png", height: 14, width: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      'TOTAL: $totalCost COINS',
+                      style: const TextStyle(
+                        color: Appcolor.secondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    child: Text(
-                      'BOOK SLOTS',
-                      style: TextStyle(
-                        color: selectedSlotIndices.isEmpty ? Colors.grey[400] : Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  ],
+                ),
               ],
+            ),
           ),
-      );
-    }
+          ElevatedButton(
+            onPressed: selectedSlotIndices.isEmpty || isBookingInProgress
+                ? null
+                : () => _showMultipleSlotRegistrationDialog(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Appcolor.secondary,
+              disabledBackgroundColor: Colors.grey[600],
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: selectedSlotIndices.isEmpty ? 0 : 5,
+            ),
+            child: Text(
+              'BOOK SLOTS',
+              style: TextStyle(
+                color: selectedSlotIndices.isEmpty ? Colors.grey[400] : Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    @override
-    Widget build(BuildContext context) {
-        return Scaffold(
-            backgroundColor: Appcolor.primary,
-            body: SafeArea(
-                child: !initialDataLoaded
-                    ? const Center(child: CircularProgressIndicator(color: Appcolor.secondary))
-                    : tournament == null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Appcolor.primary,
+      body: SafeArea(
+        child: !initialDataLoaded
+            ? const Center(
+                child: CircularProgressIndicator(color: Appcolor.secondary),
+              )
+            : tournament == null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Failed to load tournament data.',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                        const SizedBox(height: 10),
+                        if (lastError != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 40),
+                            child: Text(
+                              lastError!,
+                              style: const TextStyle(color: Colors.red, fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _initializeData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Appcolor.secondary,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: [
+                      // Header with background image
+                      Container(
+                        height: MediaQuery.of(context).size.height * 0.25,
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage("assets/images/freefirebanner4.webp"),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            // Gradient overlay
+                            Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black87],
+                                ),
+                              ),
+                            ),
+                            // Back button
+                            Positioned(
+                              top: 16,
+                              left: 16,
+                              child: GestureDetector(
+                                onTap: () => Navigator.of(context).pop(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Appcolor.primary.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_back,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Tournament info
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 15,
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              tournament!.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 15),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                const Text('Failed to load tournament data.', style: TextStyle(color: Colors.white)),
-                                const SizedBox(height: 10),
-                                if (lastError != null) Text(lastError!, style: const TextStyle(color: Colors.red)),
-                                const SizedBox(height: 20),
-                                ElevatedButton(
-                                    onPressed: _initializeData,
-                                    child: const Text('Retry'),
-                                )
+                                _buildInfoColumn(
+                                  icon: Image.asset(
+                                    "assets/icons/dollar.png",
+                                    height: 14,
+                                    width: 14,
+                                  ),
+                                  value: '${tournament!.entryFee}/-',
+                                  label: 'Entry/Player',
+                                ),
+                                _buildInfoColumn(
+                                  icon: const Icon(
+                                    Icons.groups,
+                                    color: Appcolor.secondary,
+                                    size: 16,
+                                  ),
+                                  value: teamSizeString,
+                                  label: 'Team Size',
+                                ),
+                                _buildInfoColumn(
+                                  icon: const Icon(
+                                    Icons.emoji_events,
+                                    color: Appcolor.secondary,
+                                    size: 16,
+                                  ),
+                                  value: '${tournament!.prizePool}',
+                                  label: 'Prize Pool',
+                                ),
                               ],
                             ),
-                          )
-                        : Column(
-                            children: [
-                                // Header with background image
-                                Container(
-                                    height: MediaQuery.of(context).size.height * 0.25,
-                                    width: double.infinity,
-                                    decoration: const BoxDecoration(
-                                        image: DecorationImage(
-                                          image: AssetImage("assets/images/freefirebanner4.webp"),
-                                          fit: BoxFit.cover,
-                                        ),
-                                    ),
-                                    child: Stack(
-                                        children: [
-                                            // Gradient overlay for text visibility
-                                            Container(
-                                                decoration: const BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                        begin: Alignment.topCenter,
-                                                        end: Alignment.bottomCenter,
-                                                        colors: [Colors.transparent, Colors.black87],
-                                                    ),
-                                                ),
-                                            ),
-                                            // Back button
-                                            Positioned(
-                                                top: 16,
-                                                left: 16,
-                                                child: GestureDetector(
-                                                    onTap: () => Navigator.of(context).pop(),
-                                                    child: Container(
-                                                        padding: const EdgeInsets.all(6),
-                                                        decoration: BoxDecoration(
-                                                            color: Appcolor.primary.withOpacity(0.7),
-                                                            borderRadius: BorderRadius.circular(6),
-                                                        ),
-                                                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                                                    ),
-                                                ),
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                // Tournament info
-                                Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                                    child: Column(
-                                        children: [
-                                            Text(
-                                                tournament!.title,
-                                                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                                                textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 15),
-                                            Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                children: [
-                                                    _buildInfoColumn(
-                                                        icon: Image.asset("assets/icons/dollar.png", height: 14, width: 14),
-                                                        value: '${tournament!.entryFee}/-',
-                                                        label: 'Entry/Player',
-                                                    ),
-                                                    _buildInfoColumn(
-                                                        icon: const Icon(Icons.groups, color: Appcolor.secondary, size: 16),
-                                                        value: teamSizeString,
-                                                        label: 'Team Size',
-                                                    ),
-                                                    _buildInfoColumn(
-                                                        icon: const Icon(Icons.emoji_events, color: Appcolor.secondary, size: 16),
-                                                        value: '${tournament!.prizePool}',
-                                                        label: 'Prize Pool',
-                                                    ),
-                                                ],
-                                            ),
-                                        ],
-                                    ),
-                                ),
-                                // Team-based slots section
-                                _buildSlotsSection(),
-                                
-                                // Bottom register section
-                                _buildBottomActionBar(),
-                            ],
+                          ],
                         ),
-            ),
-        );
-    }
+                      ),
+                      // Slots section
+                      _buildSlotsSection(),
+                      // Bottom action bar
+                      _buildBottomActionBar(),
+                    ],
+                  ),
+      ),
+    );
+  }
 }

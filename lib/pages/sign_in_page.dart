@@ -1,21 +1,12 @@
+// lib/pages/sign_in_page.dart
+// FIXED VERSION - Proper navigation handling
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:grand_battle_arena/pages/main_component.dart';
 import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/services/auth_state_manager.dart';
 import 'package:grand_battle_arena/pages/sign_up_page.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
-
-class ForgotPasswordPage extends StatelessWidget {
-  const ForgotPasswordPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset Password')),
-      body: const Center(child: Text('Forgot Password Screen')),
-    );
-  }
-}
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -26,8 +17,8 @@ class SignInPage extends StatefulWidget {
 
 class _SignInPageState extends State<SignInPage> {
   bool _isPasswordVisible = false;
-  bool _isGoogleSignInLoading = false; // Add separate loading state for Google
-  bool _isEmailSignInLoading = false;  // Add separate loading state for email
+  bool _isGoogleSignInLoading = false;
+  bool _isEmailSignInLoading = false;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -39,16 +30,37 @@ class _SignInPageState extends State<SignInPage> {
     super.dispose();
   }
 
+  // STEP 2.1: Listen to auth state changes
+  @override
+  void initState() {
+    super.initState();
+    
+    // Listen for successful authentication
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authManager = Provider.of<AuthStateManager>(context, listen: false);
+      
+      // If already authenticated when page loads, pop immediately
+      if (authManager.isAuthenticated) {
+        print('🔵 Already authenticated, returning to previous screen');
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // STEP 2.2: Consumer to react to auth changes
     return Consumer<AuthStateManager>(
       builder: (context, authManager, child) {
-        // If user is authenticated, immediately navigate
-        // if (authManager.isAuthenticated && authManager.isInitialized) {
-        //   WidgetsBinding.instance.addPostFrameCallback((_) {
-        //     Navigator.of(context).pushReplacementNamed('/main');
-        //   });
-        // }
+        // STEP 2.3: Auto-navigate when authenticated
+        if (authManager.isAuthenticated && authManager.isInitialized) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              print('✅ Sign-in successful, navigating back');
+              Navigator.of(context).pop();
+            }
+          });
+        }
 
         return Scaffold(
           backgroundColor: Appcolor.primary,
@@ -68,7 +80,8 @@ class _SignInPageState extends State<SignInPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  // Header Text
+                  
+                  // Header
                   const Text(
                     'Welcome Back',
                     style: TextStyle(
@@ -84,61 +97,51 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Google Sign-In Button with Enhanced Visual Feedback
+                  // STEP 2.4: Google Sign-In with proper loading state
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: ElevatedButton.icon(
-                        onPressed: (_isGoogleSignInLoading || _isEmailSignInLoading) 
-                            ? null 
-                            : _handleGoogleSignIn,
-                        icon: _isGoogleSignInLoading
-                            ? const SizedBox(
-                                height: 20.0,
-                                width: 20.0,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Appcolor.primary,
-                                ),
-                              )
-                            : Image.asset(
-                                'assets/images/google_logo.webp',
-                                height: 24.0,
+                    child: ElevatedButton.icon(
+                      onPressed: (_isGoogleSignInLoading || _isEmailSignInLoading) 
+                          ? null 
+                          : _handleGoogleSignIn,
+                      icon: _isGoogleSignInLoading
+                          ? const SizedBox(
+                              height: 20.0,
+                              width: 20.0,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Appcolor.primary,
                               ),
-                        label: _isGoogleSignInLoading
-                            ? const Text(
-                                'Signing in with Google...',
-                                style: TextStyle(
-                                  color: Appcolor.primary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : const Text(
-                                'Continue with Google',
-                                style: TextStyle(
-                                  color: Appcolor.primary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isGoogleSignInLoading 
-                              ? Appcolor.white.withOpacity(0.8) 
-                              : Appcolor.white,
-                          elevation: _isGoogleSignInLoading ? 2 : 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                            )
+                          : Image.asset(
+                              'assets/images/google_logo.webp',
+                              height: 24.0,
+                            ),
+                      label: Text(
+                        _isGoogleSignInLoading 
+                            ? 'Signing in...'
+                            : 'Continue with Google',
+                        style: const TextStyle(
+                          color: Appcolor.primary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isGoogleSignInLoading 
+                            ? Appcolor.white.withOpacity(0.8) 
+                            : Appcolor.white,
+                        elevation: _isGoogleSignInLoading ? 2 : 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 30),
 
-                  // "OR" Divider
+                  // Divider
                   Row(
                     children: [
                       Expanded(child: Divider(color: Appcolor.grey)),
@@ -151,7 +154,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Email Text Field
+                  // Email Field
                   TextField(
                     controller: _emailController,
                     enabled: !(_isGoogleSignInLoading || _isEmailSignInLoading),
@@ -178,7 +181,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Password Text Field
+                  // Password Field
                   TextField(
                     controller: _passwordController,
                     enabled: !(_isGoogleSignInLoading || _isEmailSignInLoading),
@@ -203,79 +206,56 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isPasswordVisible
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                          _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
                           color: Appcolor.grey,
                         ),
                         onPressed: (_isGoogleSignInLoading || _isEmailSignInLoading)
                             ? null
-                            : () {
-                                setState(() {
-                                  _isPasswordVisible = !_isPasswordVisible;
-                                });
-                              },
+                            : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                       ),
                     ),
                   ),
                   const SizedBox(height: 30),
 
-                  // Sign In Button with Enhanced Visual Feedback
+                  // STEP 2.5: Email Sign-In Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: ElevatedButton(
-                        onPressed: (_isGoogleSignInLoading || _isEmailSignInLoading) 
-                            ? null 
-                            : _handleSignIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isEmailSignInLoading 
-                              ? Appcolor.secondary.withOpacity(0.8) 
-                              : Appcolor.secondary,
-                          elevation: _isEmailSignInLoading ? 2 : 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                    child: ElevatedButton(
+                      onPressed: (_isGoogleSignInLoading || _isEmailSignInLoading) 
+                          ? null 
+                          : _handleSignIn,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isEmailSignInLoading 
+                            ? Appcolor.secondary.withOpacity(0.8) 
+                            : Appcolor.secondary,
+                        elevation: _isEmailSignInLoading ? 2 : 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: _isEmailSignInLoading
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    height: 20.0,
-                                    width: 20.0,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Appcolor.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Signing in...',
-                                    style: TextStyle(
-                                      color: Appcolor.primary,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const Text(
-                                'Sign In with Email',
-                                style: TextStyle(
-                                  color: Appcolor.primary,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                       ),
+                      child: _isEmailSignInLoading
+                          ? const SizedBox(
+                              height: 20.0,
+                              width: 20.0,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Appcolor.primary,
+                              ),
+                            )
+                          : const Text(
+                              'Sign In with Email',
+                              style: TextStyle(
+                                color: Appcolor.primary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Error message display
+                  // STEP 2.6: Error Display
                   if (authManager.error != null)
                     Container(
                       width: double.infinity,
@@ -286,10 +266,17 @@ class _SignInPageState extends State<SignInPage> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.red.withOpacity(0.3)),
                       ),
-                      child: Text(
-                        authManager.error!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              authManager.error!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -305,7 +292,6 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
                   // Sign Up Link
@@ -329,11 +315,13 @@ class _SignInPageState extends State<SignInPage> {
                                   ? null
                                   : (TapGestureRecognizer()
                                     ..onTap = () {
-                                       Navigator.pushReplacement(
+                                      Navigator.pushReplacement(
                                         context,
-                                        MaterialPageRoute(builder: (context) => const SignUpPage()),
+                                        MaterialPageRoute(
+                                          builder: (context) => const SignUpPage()
+                                        ),
                                       );
-                                      }),
+                                    }),
                             ),
                           ],
                         ),
@@ -349,13 +337,11 @@ class _SignInPageState extends State<SignInPage> {
     );
   }
 
+  // STEP 2.7: Handle Google Sign-In
   void _handleGoogleSignIn() async {
     if (_isGoogleSignInLoading || _isEmailSignInLoading) return;
     
-    setState(() {
-      _isGoogleSignInLoading = true;
-    });
-    
+    setState(() => _isGoogleSignInLoading = true);
 
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
     
@@ -364,37 +350,27 @@ class _SignInPageState extends State<SignInPage> {
 
       if (!mounted) return;
 
-      if (success) {
-        // Add a small delay to ensure state is properly updated
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        // Force navigation to main app
-        if (mounted) {
-          // Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
-          Navigator.of(context).pop(); 
-        }
-      } else {
-        setState(() {
-          _isGoogleSignInLoading = false;
-        });
-        
-        if (authManager.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(authManager.error!),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
+      if (!success && authManager.error != null) {
+        setState(() => _isGoogleSignInLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(authManager.error!)),
+              ],
             ),
-          );
-        }
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
+      // If success, navigation handled by Consumer
     } catch (e) {
-      setState(() {
-        _isGoogleSignInLoading = false;
-      });
+      setState(() => _isGoogleSignInLoading = false);
       
       if (mounted) {
-        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Sign-in failed: $e'),
@@ -402,15 +378,14 @@ class _SignInPageState extends State<SignInPage> {
           ),
         );
       }
-    }finally {
-  if (mounted) setState(() => _isGoogleSignInLoading = false);
-}
+    }
   }
 
+  // STEP 2.8: Handle Email Sign-In
   void _handleSignIn() async {
     if (_isGoogleSignInLoading || _isEmailSignInLoading) return;
     
-    // Basic validation
+    // Validation
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -418,9 +393,7 @@ class _SignInPageState extends State<SignInPage> {
       return;
     }
 
-    setState(() {
-      _isEmailSignInLoading = true;
-    });
+    setState(() => _isEmailSignInLoading = true);
 
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
     
@@ -432,34 +405,25 @@ class _SignInPageState extends State<SignInPage> {
 
       if (!mounted) return;
 
-      if (success) {
-        // Add a small delay to ensure state is properly updated
-        await Future.delayed(const Duration(milliseconds: 500));
-        
-        // Force navigation to main app
-        if (mounted) {
-          // Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
-        Navigator.of(context).pop(); 
-        }
-      } else {
-        setState(() {
-          _isEmailSignInLoading = false;
-        });
-        
-        if (authManager.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(authManager.error!),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
+      if (!success && authManager.error != null) {
+        setState(() => _isEmailSignInLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text(authManager.error!)),
+              ],
             ),
-          );
-        }
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
+      // If success, navigation handled by Consumer
     } catch (e) {
-      setState(() {
-        _isEmailSignInLoading = false;
-      });
+      setState(() => _isEmailSignInLoading = false);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -469,11 +433,10 @@ class _SignInPageState extends State<SignInPage> {
           ),
         );
       }
-    }finally {
-  if (mounted) setState(() => _isGoogleSignInLoading = false);
-}
+    }
   }
 
+  // Handle forgot password
   void _handleForgotPassword() async {
     if (_isGoogleSignInLoading || _isEmailSignInLoading) return;
     

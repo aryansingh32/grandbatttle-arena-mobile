@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:grand_battle_arena/components/bannerslider.dart';
 import 'package:grand_battle_arena/models/available_amount_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
@@ -14,7 +15,7 @@ import 'package:grand_battle_arena/models/payment_qr_response.dart';
 
 /// Enhanced API endpoints with notification and payment support
 class _ApiEndpoints {
-  static const String baseUrl = 'https://795731a87468.ngrok-free.app';
+  static const String baseUrl = 'http://192.168.1.20:8080';
   static const String _api = '/api';
 
   // Public Endpoints
@@ -54,11 +55,34 @@ class _ApiEndpoints {
   static String getTournamentDetail(int tournamentId) => '$tournaments/$tournamentId';
   static String markNotificationRead(int notificationId) => '$_api/notifications/$notificationId/read';
   static String getPaymentQrByAmount(int amount) => '$paymentQr/$amount';
+
+  static const String banners = '$_api/banners';
 }
 
 /// Enhanced API Service with comprehensive error handling, notification and payment support
 class ApiService {
   
+   
+  
+  static Future<List<BannerModel>> getActiveBanners() async {
+    try {
+      final response = await _get(_ApiEndpoints.banners, requireAuth: false);
+      final data = _handleResponse(response) as List;
+      
+      final banners = data
+          .map((json) => BannerModel.fromJson(json))
+          .where((banner) => banner.isValid)
+          .toList();
+      
+      // Sort by order
+      banners.sort((a, b) => a.order.compareTo(b.order));
+      
+      return banners;
+    } catch (e) {
+      print('Error fetching banners: $e');
+      return [];
+    }
+  }
   // ===========================================================================
   // Core Network Methods
   // ===========================================================================

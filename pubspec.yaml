@@ -57,6 +57,9 @@ dependencies:
 
   # For theming and styling if you don't have it
   google_fonts: ^6.3.0
+  url_launcher: ^6.3.2
+  cached_network_image: ^3.4.1
+  carousel_slider: ^5.1.1
  
 
 dev_dependencies:
