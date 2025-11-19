@@ -1,5 +1,5 @@
 // lib/pages/sign_in_page.dart
-// FIXED VERSION - Proper navigation handling
+// COMPLETELY FIXED - Proper loading states with visual feedback
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
@@ -30,36 +30,14 @@ class _SignInPageState extends State<SignInPage> {
     super.dispose();
   }
 
-  // STEP 2.1: Listen to auth state changes
-  @override
-  void initState() {
-    super.initState();
-    
-    // Listen for successful authentication
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authManager = Provider.of<AuthStateManager>(context, listen: false);
-      
-      // If already authenticated when page loads, pop immediately
-      if (authManager.isAuthenticated) {
-        print('🔵 Already authenticated, returning to previous screen');
-        Navigator.of(context).pop();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    // STEP 2.2: Consumer to react to auth changes
     return Consumer<AuthStateManager>(
       builder: (context, authManager, child) {
-        // STEP 2.3: Auto-navigate when authenticated
-        if (authManager.isAuthenticated && authManager.isInitialized) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              print('✅ Sign-in successful, navigating back');
-              Navigator.of(context).pop();
-            }
-          });
+        // If user is authenticated, they shouldn't see this page
+        // AuthWrapper will handle navigation
+        if (authManager.isAuthenticated) {
+          print('⚠️ User is authenticated but still on SignInPage');
         }
 
         return Scaffold(
@@ -97,7 +75,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // STEP 2.4: Google Sign-In with proper loading state
+                  // Google Sign-In Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -111,7 +89,7 @@ class _SignInPageState extends State<SignInPage> {
                               width: 20.0,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Appcolor.primary,
+                                valueColor: AlwaysStoppedAnimation<Color>(Appcolor.primary),
                               ),
                             )
                           : Image.asset(
@@ -130,8 +108,9 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isGoogleSignInLoading 
-                            ? Appcolor.white.withOpacity(0.8) 
+                            ? Appcolor.white.withOpacity(0.95) // Keep it white, not black
                             : Appcolor.white,
+                        disabledBackgroundColor: Appcolor.white.withOpacity(0.95), // CRITICAL FIX
                         elevation: _isGoogleSignInLoading ? 2 : 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -217,7 +196,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // STEP 2.5: Email Sign-In Button
+                  // Email Sign-In Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -240,7 +219,7 @@ class _SignInPageState extends State<SignInPage> {
                               width: 20.0,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Appcolor.primary,
+                                valueColor: AlwaysStoppedAnimation<Color>(Appcolor.white),
                               ),
                             )
                           : const Text(
@@ -255,7 +234,7 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // STEP 2.6: Error Display
+                  // Error Display
                   if (authManager.error != null)
                     Container(
                       width: double.infinity,
@@ -337,51 +316,78 @@ class _SignInPageState extends State<SignInPage> {
     );
   }
 
-  // STEP 2.7: Handle Google Sign-In
-  void _handleGoogleSignIn() async {
-    if (_isGoogleSignInLoading || _isEmailSignInLoading) return;
-    
-    setState(() => _isGoogleSignInLoading = true);
+// ---------- Paste this inside SignInPage State class ----------
 
-    final authManager = Provider.of<AuthStateManager>(context, listen: false);
-    
-    try {
-      final success = await authManager.signInWithGoogle();
 
+
+// Handler to call when the Google button is tapped
+Future<void> _handleGoogleSignIn() async {
+  if (_isGoogleSignInLoading) return;
+  setState(() => _isGoogleSignInLoading = true);
+
+  final authManager = Provider.of<AuthStateManager>(context, listen: false);
+  print('🔵 UI: calling signInWithGoogle()');
+
+  try {
+    final success = await authManager.signInWithGoogle();
+    print('🔵 Google sign-in result (UI): $success, authManager.error=${authManager.error}');
+    if (success) {
+      // Prefer relying on AuthWrapper stream to navigate. If you want immediate navigation:
       if (!mounted) return;
-
-      if (!success && authManager.error != null) {
-        setState(() => _isGoogleSignInLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text(authManager.error!)),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-      // If success, navigation handled by Consumer
-    } catch (e) {
-      setState(() => _isGoogleSignInLoading = false);
-      
+      // Safe immediate navigation — but avoid double navigation if AuthWrapper also changes.
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      // Show error returned from AuthStateManager or generic message
+      final message = authManager.error ?? 'Google sign-in failed';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign-in failed: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(message)),
         );
+      } else {
+        print('⚠️ Could not show SnackBar; widget unmounted. message=$message');
       }
     }
+  } catch (e, st) {
+    print('🔥 _handleGoogleSignIn unknown error: $e\n$st');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign-in error: $e')),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isGoogleSignInLoading = false);
+    // If unmounted, ensure provider clears loading
+    if (!mounted) authManager.clearLoadingState();
   }
+}
 
-  // STEP 2.8: Handle Email Sign-In
+// Sample button widget (replace your existing Google button widget)
+Widget _googleSignInButton() {
+  return ElevatedButton.icon(
+    onPressed: (_isGoogleSignInLoading) ? null : _handleGoogleSignIn,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.white,
+      elevation: 2,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      side: const BorderSide(color: Colors.grey, width: 0.5),
+    ),
+    icon: _isGoogleSignInLoading
+        ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Image.asset('assets/images/google_logo.webp', height: 22),
+    label: Text(
+      _isGoogleSignInLoading ? 'Signing in...' : 'Continue with Google',
+      style: const TextStyle(color: Colors.black87),
+    ),
+  );
+}
+// ---------- End ----------
+
+
+  // Handle Email Sign-In
   void _handleSignIn() async {
     if (_isGoogleSignInLoading || _isEmailSignInLoading) return;
     
@@ -397,16 +403,15 @@ class _SignInPageState extends State<SignInPage> {
 
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
     
-    try {
-      final success = await authManager.signInWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+    final success = await authManager.signInWithEmail(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
 
-      if (!mounted) return;
-
+    if (mounted) {
+      setState(() => _isEmailSignInLoading = false);
+      
       if (!success && authManager.error != null) {
-        setState(() => _isEmailSignInLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -418,18 +423,6 @@ class _SignInPageState extends State<SignInPage> {
             ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-      // If success, navigation handled by Consumer
-    } catch (e) {
-      setState(() => _isEmailSignInLoading = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sign-in failed: $e'),
-            backgroundColor: Colors.red,
           ),
         );
       }

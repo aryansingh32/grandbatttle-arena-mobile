@@ -584,4 +584,30 @@ class PaymentException implements Exception {
   
   @override
   String toString() => 'PaymentException: $message';
-}
+}   // int left=0;
+        // int right=arr.length-1;
+        // while(left<right){
+        //     while(arr[left]==0 && left<right  ) left++;
+        //     while(arr[right]==1 & left<right)right--;
+        //     if(left<right){
+        //         int t = arr[right];
+        //         arr[right]=arr[left];
+        //         arr[left]=t;
+        //         left++;
+        //         right--;
+        //     }
+        // }   // int left=0;
+        // int right=arr.length-1;
+        // while(left<right){
+        //     while(arr[left]==0 && left<right  ) left++;
+        //     while(arr[right]==1 & left<right)right--;
+        //     if(left<right){
+        //         int t = arr[right];
+        //         arr[right]=arr[left];
+        //         arr[left]=t;
+        //         left++;
+        //         right--;
+        //     }
+        // }
+        
+        

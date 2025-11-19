@@ -1,5 +1,5 @@
 // lib/models/tournament_model.dart
-// 🔥 CRITICAL FIX: Team size parsing with comprehensive logging
+// FIXED VERSION - Robust team size parsing
 
 class TournamentModel {
   final int id;
@@ -11,7 +11,7 @@ class TournamentModel {
   final String game;
   final int maxPlayers;
   final DateTime startTime;
-  final String teamSize; // FIXED: Proper parsing
+  final String teamSize; // "Solo", "Duo", "Squad", "Hexa"
   final String status;
   final String? gameId;
   final String? gamePassword;
@@ -39,11 +39,10 @@ class TournamentModel {
   });
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
-    print('🔵 RAW JSON teamSize: ${json['teamSize']} (type: ${json['teamSize'].runtimeType})');
-    
-    // CRITICAL FIX: Parse team size with null handling
+    // CRITICAL FIX: Parse team size with comprehensive handling
     String parsedTeamSize = _parseTeamSize(json['teamSize']);
-    print('✅ PARSED teamSize: $parsedTeamSize');
+    
+    print('✅ Tournament ${json['id']}: teamSize="${json['teamSize']}" → "$parsedTeamSize"');
 
     return TournamentModel(
       id: json['id'] as int,
@@ -65,22 +64,18 @@ class TournamentModel {
     );
   }
 
-  // 🔥 CRITICAL: Comprehensive team size parser
+  // CRITICAL: Comprehensive team size parser
   static String _parseTeamSize(dynamic teamSizeValue) {
     if (teamSizeValue == null) {
       print('⚠️ teamSize is NULL - defaulting to Solo');
       return 'Solo';
     }
 
-    // Convert to string and clean
-    String teamSizeStr = teamSizeValue.toString().trim();
-    print('🔍 Parsing teamSize: "$teamSizeStr"');
-
-    // UPPERCASE comparison for backend compatibility
-    String upperCase = teamSizeStr.toUpperCase();
-
-    // Map all possible values
-    Map<String, String> teamSizeMap = {
+    // Convert to string and normalize
+    String teamSizeStr = teamSizeValue.toString().trim().toUpperCase();
+    
+    // Map all possible values from backend
+    const Map<String, String> teamSizeMap = {
       'SOLO': 'Solo',
       'SOLO1': 'Solo',
       '1': 'Solo',
@@ -95,8 +90,11 @@ class TournamentModel {
       '6': 'Hexa',
     };
 
-    String result = teamSizeMap[upperCase] ?? 'Solo';
-    print('✅ Mapped "$teamSizeStr" → "$result"');
+    String result = teamSizeMap[teamSizeStr] ?? 'Solo';
+    if (!teamSizeMap.containsKey(teamSizeStr)) {
+      print('⚠️ Unknown teamSize: "$teamSizeValue" - defaulting to Solo');
+    }
+    
     return result;
   }
 
@@ -140,7 +138,7 @@ class TournamentModel {
       case 'hexa':
         return 6;
       default:
-        print('⚠️ Unknown teamSize: $teamSize, defaulting to 1');
+        print('⚠️ Unknown teamSize in getter: $teamSize, defaulting to 1');
         return 1;
     }
   }
@@ -151,7 +149,6 @@ class TournamentModel {
   bool get isDuo => teamSize.toLowerCase() == 'duo';
   bool get isSquad => teamSize.toLowerCase() == 'squad';
   bool get isHexa => teamSize.toLowerCase() == 'hexa';
-
   bool get isFull => registeredPlayers >= maxPlayers;
 
   String get dateTimeFormatted {
@@ -179,68 +176,9 @@ class TournamentModel {
   bool get hasStarted => timeUntilStart.isNegative;
   bool get isUpcoming => !hasStarted && status.toUpperCase() == 'UPCOMING';
 
-  TournamentModel copyWith({
-    int? id,
-    String? title,
-    int? prizePool,
-    int? entryFee,
-    String? imageUrl,
-    String? map,
-    String? game,
-    int? maxPlayers,
-    DateTime? startTime,
-    String? teamSize,
-    String? status,
-    String? gameId,
-    String? gamePassword,
-    List<String>? rules,
-    int? registeredPlayers,
-    List<ParticipantModel>? participants,
-  }) {
-    return TournamentModel(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      prizePool: prizePool ?? this.prizePool,
-      entryFee: entryFee ?? this.entryFee,
-      imageUrl: imageUrl ?? this.imageUrl,
-      map: map ?? this.map,
-      game: game ?? this.game,
-      maxPlayers: maxPlayers ?? this.maxPlayers,
-      startTime: startTime ?? this.startTime,
-      teamSize: teamSize ?? this.teamSize,
-      status: status ?? this.status,
-      gameId: gameId ?? this.gameId,
-      gamePassword: gamePassword ?? this.gamePassword,
-      rules: rules ?? this.rules,
-      registeredPlayers: registeredPlayers ?? this.registeredPlayers,
-      participants: participants ?? this.participants,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': title,
-      'prizePool': prizePool,
-      'entryFee': entryFee,
-      'imageLink': imageUrl,
-      'map': map,
-      'game': game,
-      'maxPlayers': maxPlayers,
-      'startTime': startTime.toIso8601String(),
-      'teamSize': teamSize,
-      'status': status,
-      'gameId': gameId,
-      'gamePassword': gamePassword,
-      'rules': rules,
-      'registeredPlayers': registeredPlayers,
-      'participants': participants.map((p) => p.toJson()).toList(),
-    };
-  }
-
   @override
   String toString() {
-    return 'Tournament(id: $id, title: $title, teamSize: "$teamSize", playersPerTeam: $playersPerTeam, registered: $registeredPlayers/$maxPlayers)';
+    return 'Tournament(id: $id, title: $title, teamSize: "$teamSize", playersPerTeam: $playersPerTeam)';
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 // import 'package:grand_battle_arena/components/tournamentdetails.dart';
 import 'package:grand_battle_arena/pages/main_component.dart';
 import 'package:grand_battle_arena/pages/sign_in_page.dart';
+import 'package:grand_battle_arena/pages/sign_up_page.dart';
 
 import 'package:grand_battle_arena/services/notification_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
@@ -52,7 +53,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: "Esports App",
       // USE the home property and point it to your new wrapper
-      home: const AuthWrapper(),
+      home: const AuthWrapper(signedInScreen: SignInPage(), signedOutScreen: SignUpPage()),
       // Your routes are still needed for in-app navigation
       routes: {
         '/main': (context) => MainContainer(),

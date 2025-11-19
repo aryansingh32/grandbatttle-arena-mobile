@@ -1,32 +1,12 @@
+// lib/pages/sign_up_page.dart
+// FIXED VERSION - No manual navigation, AuthWrapper handles it
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:grand_battle_arena/pages/main_component.dart';
 import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/services/auth_state_manager.dart';
 import 'package:grand_battle_arena/pages/sign_in_page.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
-
-class TermsOfServicePage extends StatelessWidget {
-  const TermsOfServicePage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Terms of Service')),
-      body: const Center(child: Text('Terms of Service Content')),
-    );
-  }
-}
-
-class PrivacyPolicyPage extends StatelessWidget {
-  const PrivacyPolicyPage({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Privacy Policy')),
-      body: const Center(child: Text('Privacy Policy Content')),
-    );
-  }
-}
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -43,6 +23,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -75,7 +56,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
-                  // Header Text
                   const Text(
                     'Join Battle Arena',
                     style: TextStyle(
@@ -96,14 +76,14 @@ class _SignUpPageState extends State<SignUpPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton.icon(
-                      onPressed: authManager.isLoading ? null : _handleGoogleSignIn,
-                      icon: authManager.isLoading
-                          ? Container()
+                      onPressed: _isLoading ? null : _handleGoogleSignIn,
+                      icon: _isLoading
+                          ? const SizedBox.shrink()
                           : Image.asset(
                               'assets/images/google_logo.webp',
                               height: 24.0,
                             ),
-                      label: authManager.isLoading
+                      label: _isLoading
                           ? const SizedBox(
                               height: 24.0,
                               width: 24.0,
@@ -147,38 +127,38 @@ class _SignUpPageState extends State<SignUpPage> {
                   _buildTextField(
                     label: 'Full Name',
                     controller: _fullNameController,
-                    enabled: !authManager.isLoading,
+                    enabled: !_isLoading,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(
                     label: 'Email address',
                     inputType: TextInputType.emailAddress,
                     controller: _emailController,
-                    enabled: !authManager.isLoading,
+                    enabled: !_isLoading,
                   ),
                   const SizedBox(height: 20),
                   _buildPasswordField(
                     label: 'Password',
                     isPasswordVisible: _isPasswordVisible,
-                    onToggleVisibility: authManager.isLoading
+                    onToggleVisibility: _isLoading
                         ? null
                         : () {
                             setState(() => _isPasswordVisible = !_isPasswordVisible);
                           },
                     controller: _passwordController,
-                    enabled: !authManager.isLoading,
+                    enabled: !_isLoading,
                   ),
                   const SizedBox(height: 20),
                   _buildPasswordField(
                     label: 'Confirm Password',
                     isPasswordVisible: _isConfirmPasswordVisible,
-                    onToggleVisibility: authManager.isLoading
+                    onToggleVisibility: _isLoading
                         ? null
                         : () {
                             setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible);
                           },
                     controller: _confirmPasswordController,
-                    enabled: !authManager.isLoading,
+                    enabled: !_isLoading,
                   ),
                   const SizedBox(height: 30),
 
@@ -187,14 +167,14 @@ class _SignUpPageState extends State<SignUpPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: authManager.isLoading ? null : _handleCreateAccount,
+                      onPressed: _isLoading ? null : _handleCreateAccount,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Appcolor.secondary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: authManager.isLoading
+                      child: _isLoading
                           ? const CircularProgressIndicator(
                               color: Appcolor.primary,
                             )
@@ -229,38 +209,13 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
 
                   // Terms and Policy
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
                     child: Center(
-                      child: RichText(
+                      child: Text(
+                        'By signing up, you agree to our Terms of Service and Privacy Policy',
+                        style: TextStyle(color: Appcolor.grey, fontSize: 12),
                         textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: TextStyle(color: Appcolor.grey, fontSize: 12),
-                          children: [
-                            const TextSpan(text: "By signing up, you agree to our "),
-                            _buildClickableTextSpan('Terms of Service', 
-                              authManager.isLoading ? null : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const TermsOfServicePage(),
-                                  ),
-                                );
-                              }
-                            ),
-                            const TextSpan(text: " and "),
-                            _buildClickableTextSpan('Privacy Policy', 
-                              authManager.isLoading ? null : () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const PrivacyPolicyPage(),
-                                  ),
-                                );
-                              }
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
@@ -273,14 +228,25 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: TextStyle(color: Appcolor.grey, fontSize: 14),
                         children: [
                           const TextSpan(text: "Already have an account? "),
-                          _buildClickableTextSpan('Sign in here',
-                            authManager.isLoading ? null : () {
-                             Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SignInPage()),
-                            ); 
-
-                            }
+                          TextSpan(
+                            text: 'Sign in here',
+                            style: TextStyle(
+                              color: _isLoading 
+                                  ? Appcolor.secondary.withOpacity(0.5)
+                                  : Appcolor.secondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            recognizer: _isLoading
+                                ? null
+                                : (TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const SignInPage()
+                                      ),
+                                    );
+                                  }),
                           ),
                         ],
                       ),
@@ -376,27 +342,22 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  TextSpan _buildClickableTextSpan(String text, VoidCallback? onTap) {
-    return TextSpan(
-      text: text,
-      style: TextStyle(
-        color: onTap != null ? Appcolor.secondary : Appcolor.secondary.withOpacity(0.5),
-        fontWeight: FontWeight.bold,
-      ),
-      recognizer: onTap != null ? (TapGestureRecognizer()..onTap = onTap) : null,
-    );
-  }
-
   void _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
     final success = await authManager.signInWithGoogle();
 
-    if (!mounted) return;
-  // Let the AuthWrapper handle the redirect. Only show an error if it fails.
-  if (!success && authManager.error != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authManager.error!)));
-  }
-    // Success is handled automatically by AuthWrapper
+    if (mounted) {
+      setState(() => _isLoading = false);
+      
+      if (!success && authManager.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authManager.error!))
+        );
+      }
+    }
+    // If success, AuthWrapper handles navigation automatically
   }
 
   void _handleCreateAccount() async {
@@ -425,6 +386,8 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
     final success = await authManager.signUp(
       email: _emailController.text.trim(),
@@ -432,12 +395,15 @@ class _SignUpPageState extends State<SignUpPage> {
       fullName: _fullNameController.text.trim(),
     );
 
-    if (!mounted) return;
-
-      // Let the AuthWrapper handle the redirect. Only show an error if it fails.
-  if (!success && authManager.error != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authManager.error!)));
-  }
-    // Success is handled automatically by AuthWrapper
+    if (mounted) {
+      setState(() => _isLoading = false);
+      
+      if (!success && authManager.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authManager.error!))
+        );
+      }
+    }
+    // If success, AuthWrapper handles navigation automatically
   }
 }
