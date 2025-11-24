@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:grand_battle_arena/models/notification_model.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
+import 'package:grand_battle_arena/services/firebase_auth_service.dart'; // FIXED: Import for ID token
 import 'package:grand_battle_arena/theme/appcolor.dart';
 
 class NotificationService {
@@ -99,6 +100,7 @@ class NotificationService {
   }
 
   /// STEP 3.6: Send token to server with proper async handling
+  /// CRITICAL: Gets Firebase ID token for authentication
   static Future<void> sendTokenToServer() async {
     try {
       // Wait for token if not yet available
@@ -112,12 +114,40 @@ class NotificationService {
         return;
       }
 
-      print('🚀 Sending token to server...');
+      // CRITICAL FIX: Get Firebase ID token for authentication
+      // Import FirebaseAuthService to get the ID token
+      final firebaseIdToken = await _getFirebaseIdToken();
+      if (firebaseIdToken == null) {
+        print('⚠️ Firebase ID token not available, skipping token registration');
+        print('   User may not be authenticated yet');
+        return;
+      }
+
+      print('🚀 Sending FCM token to server...');
+      print('   FCM Token: ${_fcmToken!.substring(0, 20)}...');
       await ApiService.updateDeviceToken(_fcmToken!);
       print('✅ Token sent to server successfully');
     } catch (e) {
       print('❌ Error sending token to server: $e');
       // Don't throw - token will be retried on next app launch
+    }
+  }
+
+  /// Get Firebase ID token for API authentication
+  /// FIXED: Now uses FirebaseAuthService to get ID token
+  static Future<String?> _getFirebaseIdToken() async {
+    try {
+      // Use FirebaseAuthService to get the ID token
+      final token = await FirebaseAuthService.getIdToken();
+      if (token != null) {
+        print('✅ Firebase ID token obtained for device token registration');
+      } else {
+        print('⚠️ Firebase ID token is null - user may not be authenticated');
+      }
+      return token;
+    } catch (e) {
+      print('❌ Error getting Firebase ID token: $e');
+      return null;
     }
   }
 
@@ -141,6 +171,7 @@ class NotificationService {
     await _localNotifications.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _onLocalNotificationTapped,
+      onDidReceiveBackgroundNotificationResponse: _onLocalNotificationTapped,
     );
 
     // Create notification channels
@@ -149,31 +180,35 @@ class NotificationService {
   }
 
   /// Create Android notification channels
+  /// CRITICAL: Channel ID must match backend - "tournament_channel"
   static Future<void> _createNotificationChannels() async {
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
     if (androidPlugin == null) return;
 
-    // Tournament channel
+    // CRITICAL FIX: Main tournament channel - MUST match backend channel ID
+    // Backend uses "tournament_channel" for all tournament notifications
     await androidPlugin.createNotificationChannel(
       const AndroidNotificationChannel(
-        'tournament_credentials',
+        'tournament_channel', // FIXED: Changed from 'tournament_credentials' to match backend
         'Tournament Notifications',
-        description: 'Game IDs and passwords for tournaments',
+        description: 'Notifications for tournaments, wallet updates, and more',
         importance: Importance.high,
-        sound: RawResourceAndroidNotificationSound('notification'),
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
       ),
     );
 
-    // General channel
+    // General channel (fallback)
     await androidPlugin.createNotificationChannel(
       const AndroidNotificationChannel(
         'general_notifications',
         'General Notifications',
         description: 'General app notifications',
         importance: Importance.defaultImportance,
-        sound: RawResourceAndroidNotificationSound('notification'),
+        playSound: true,
       ),
     );
 
@@ -184,25 +219,25 @@ class NotificationService {
         'Wallet Notifications',
         description: 'Wallet and transaction updates',
         importance: Importance.high,
-        sound: RawResourceAndroidNotificationSound('notification'),
+        playSound: true,
+        enableVibration: true,
       ),
     );
 
-    print('✅ Notification channels created');
+    print('✅ Notification channels created (tournament_channel, general_notifications, wallet_notifications)');
   }
 
   /// STEP 3.8: Set up message handlers
+  /// NOTE: Background handler is registered in main.dart, not here
   static void _setupMessageHandlers() {
-    // Background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // Foreground messages
+    // Foreground messages (when app is open)
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Notification taps
+    // Notification taps (when app is in background)
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
     
-    print('✅ Message handlers configured');
+    print('✅ Message handlers configured (foreground and background tap)');
+    print('   Note: Background handler registered in main.dart');
   }
 
   /// Handle initial message (app opened from notification)
@@ -233,11 +268,28 @@ class NotificationService {
   }
 
   /// Show local notification
+  /// FIXED: Added showWhen and showBadge as per documentation
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;
 
     String channelId = _getChannelIdForNotification(message.data['type'] ?? 'general');
+    final String type = message.data['type'] ?? 'general';
+    List<AndroidNotificationAction> actions = [];
+    if (type == 'tournament_credentials') {
+      actions = const [
+        AndroidNotificationAction(
+          'copy_id',
+          'Copy ID',
+          showsUserInterface: true,
+        ),
+        AndroidNotificationAction(
+          'copy_pass',
+          'Copy Password',
+          showsUserInterface: true,
+        ),
+      ];
+    }
     
     final AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
@@ -246,9 +298,12 @@ class NotificationService {
       channelDescription: _getChannelDescriptionForId(channelId),
       importance: _getImportanceForType(message.data['type'] ?? 'general'),
       priority: Priority.high,
+      showWhen: true, // FIXED: Added as per documentation
+      playSound: true,
+      enableVibration: true, // FIXED: Added as per documentation
       icon: '@mipmap/ic_launcher',
       color: const Color(0xFF4CAF50),
-      playSound: true,
+      actions: actions,
     );
 
     const DarwinNotificationDetails iosNotificationDetails =
@@ -273,40 +328,45 @@ class NotificationService {
   }
 
   /// Get channel ID for notification type
+  /// CRITICAL: Use "tournament_channel" to match backend
   static String _getChannelIdForNotification(String type) {
     switch (type) {
       case 'tournament_credentials':
       case 'tournament_reminder':
       case 'tournament_result':
       case 'tournament_update':
-        return 'tournament_credentials';
+      case 'TOURNAMENT': // Backend may send uppercase
+        return 'tournament_channel'; // FIXED: Changed to match backend
       case 'wallet_transaction':
       case 'reward_distribution':
+      case 'WALLET': // Backend may send uppercase
         return 'wallet_notifications';
       default:
-        return 'general_notifications';
+        return 'tournament_channel'; // Default to tournament_channel as per backend
     }
   }
 
   static String _getChannelNameForId(String channelId) {
     switch (channelId) {
-      case 'tournament_credentials':
+      case 'tournament_channel': // FIXED: Updated to match new channel ID
+      case 'tournament_credentials': // Keep for backward compatibility
         return 'Tournament Notifications';
       case 'wallet_notifications':
         return 'Wallet Notifications';
       default:
-        return 'General Notifications';
+        return 'Tournament Notifications'; // Default to tournament channel
     }
   }
 
   static String _getChannelDescriptionForId(String channelId) {
     switch (channelId) {
-      case 'tournament_credentials':
-        return 'Tournament updates, credentials, and results';
+      case 'tournament_channel': // FIXED: Updated to match new channel ID
+      case 'tournament_credentials': // Keep for backward compatibility
+        return 'Notifications for tournaments, wallet updates, and more';
       case 'wallet_notifications':
         return 'Wallet transactions and rewards';
       default:
-        return 'General app notifications';
+        return 'Notifications for tournaments, wallet updates, and more';
     }
   }
 
@@ -356,17 +416,25 @@ class NotificationService {
   }
 
   static void _onLocalNotificationTapped(NotificationResponse response) {
-    if (response.payload != null) {
-      try {
-        final data = json.decode(response.payload!) as Map<String, dynamic>;
-        final message = RemoteMessage(
-          messageId: 'local_notification',
-          data: Map<String, String>.from(data),
-        );
-        _handleNotificationTap(message);
-      } catch (e) {
-        print('Error parsing notification payload: $e');
+    final payload = response.payload;
+    if (payload == null) return;
+    try {
+      final data = json.decode(payload) as Map<String, dynamic>;
+      if (response.actionId == 'copy_id') {
+        _copyInline(data['gameId'] ?? '', 'Game ID', NavigatorKey.currentContext);
+        return;
       }
+      if (response.actionId == 'copy_pass') {
+        _copyInline(data['gamePassword'] ?? '', 'Password', NavigatorKey.currentContext);
+        return;
+      }
+      final message = RemoteMessage(
+        messageId: 'local_notification',
+        data: Map<String, String>.from(data),
+      );
+      _handleNotificationTap(message);
+    } catch (e) {
+      print('Error parsing notification payload: $e');
     }
   }
 
@@ -563,6 +631,19 @@ class NotificationService {
     );
   }
 
+  static void _copyInline(String value, String label, BuildContext? context) {
+    if (value.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: value));
+    if (context != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$label copied'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   // API Integration
   static Future<List<NotificationModel>> getNotifications() async {
     try {
@@ -616,6 +697,11 @@ class NotificationService {
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         await _getFcmToken();
         await sendTokenToServer();
+        await _localNotifications
+    .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+    ?.requestNotificationsPermission();
+
         return true;
       }
       return false;
@@ -630,11 +716,8 @@ class NotificationService {
   }
 }
 
-// Background message handler
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('📬 Background message: ${message.messageId}');
-}
+// NOTE: Background message handler is now in firebase_messaging_background.dart
+// This is registered in main.dart using FirebaseMessaging.onBackgroundMessage
 
 // Navigator key for accessing context
 class NavigatorKey {

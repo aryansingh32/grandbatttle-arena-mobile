@@ -4,6 +4,8 @@ import 'package:grand_battle_arena/items/tournamentcard.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
+import 'package:provider/provider.dart';
+import 'package:grand_battle_arena/services/filter_provider.dart'; // CHANGE: apply shared filters on home feed.
 
 class TournamentCards extends StatefulWidget {
   const TournamentCards({super.key});
@@ -32,10 +34,11 @@ class _TournamentCardsState extends State<TournamentCards> {
 
       final tournamentList = await ApiService.getUpcomingTournaments();
       if (mounted) {
-      setState(() {
-        tournaments = tournamentList.take(2).toList(); // Show only first 2 for home page
-        isLoading = false;
-      });}
+        setState(() {
+          tournaments = tournamentList; // CHANGE: store full list and filter later.
+          isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
       setState(() {
@@ -57,21 +60,55 @@ class _TournamentCardsState extends State<TournamentCards> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
-          child: Text(
-            "Upcoming Tournaments",
-            style: TextStyle(
-              fontWeight: FontWeight.w400,
-              fontSize: 25,
-              letterSpacing: 0.5,
-              color: Appcolor.white,
-            ),
+    return Consumer<FilterProvider>(
+      builder: (context, filters, _) {
+        final filteredList = tournaments.where(filters.matchesTournament).toList();
+        final visibleCards = filteredList.take(3).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16, top: 16, right: 8, bottom: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Upcoming Tournaments",
+                style: TextStyle(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 25,
+                  letterSpacing: 0.5,
+                  color: Appcolor.white,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh list',
+                iconSize: 20,
+                onPressed: isLoading ? null : _loadTournaments,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Appcolor.secondary,
+                        ),
+                      )
+                    : const Icon(Icons.refresh, color: Appcolor.secondary),
+              ),
+            ],
           ),
         ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                filters.teamSizeFilter == 'All'
+                    ? 'Showing picks tailored by your quick filters.'
+                    : 'Filtered by ${filters.teamSizeFilter} squads',
+                style: TextStyle(color: Appcolor.grey, fontSize: 12),
+              ),
+            ),
         
         // Loading state
         if (isLoading)
@@ -109,7 +146,7 @@ class _TournamentCardsState extends State<TournamentCards> {
           )
         
         // Empty state
-        else if (tournaments.isEmpty)
+        else if (visibleCards.isEmpty)
           const Center(
             child: Padding(
               padding: EdgeInsets.all(20),
@@ -125,7 +162,7 @@ class _TournamentCardsState extends State<TournamentCards> {
         
         // Tournament cards
         else
-          ...tournaments.map((tournament) => TournamentCard(
+          ...visibleCards.map((tournament) => TournamentCard(
             title: tournament.title,
             imageUrl: tournament.imageUrl ?? 'assets/images/freefirebanner4.webp',
             dateTime: tournament.dateTimeFormatted,
@@ -136,6 +173,14 @@ class _TournamentCardsState extends State<TournamentCards> {
             map: tournament.map ?? 'Unknown Map',
             game: tournament.game,
             onRegister: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TournamentDetailsPage(
+                  tournamentId: tournament.id,
+                ),
+              ),
+            ),
+            onViewDetails: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => TournamentDetailsPage(
@@ -161,6 +206,8 @@ class _TournamentCardsState extends State<TournamentCards> {
           ),
         ),
       ],
+        );
+      },
     );
   }
 }

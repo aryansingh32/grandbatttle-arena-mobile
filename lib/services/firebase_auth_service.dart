@@ -1,3 +1,4 @@
+import 'dart:async'; // ✅ Added for TimeoutException
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
@@ -6,7 +7,6 @@ import 'package:grand_battle_arena/services/notification_service.dart';
 class FirebaseAuthService {
   static final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    // Add configuration for better performance
     scopes: ['email', 'profile'],
   );
   static bool _isInitialized = false;
@@ -15,7 +15,6 @@ class FirebaseAuthService {
   static Future<void> _initializeGoogleSignIn() async {
     if (!_isInitialized) {
       _isInitialized = true;
-      // Pre-initialize Google Sign In
       await _googleSignIn.isSignedIn();
     }
   }
@@ -39,11 +38,9 @@ class FirebaseAuthService {
       return null;
     }
   }
-  
+
   static String? getCurrentUserUID() {
     try {
-      // The currentUser getter already gives us the User object.
-      // We just need to return its 'uid' property.
       return currentUser?.uid;
     } catch (e) {
       print('Error getting current user UID: $e');
@@ -51,135 +48,251 @@ class FirebaseAuthService {
     }
   }
 
-  // Sign up with email and password
+  // ✅✅✅ CRITICAL FIX: Sign up with email and password (NON-BLOCKING)
   static Future<AuthResult> signUpWithEmail({
     required String email,
     required String password,
     required String fullName,
   }) async {
     try {
-      final UserCredential credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      print(
+        '🔵 FirebaseAuthService: Creating user with email: $email at ${DateTime.now()}',
+      );
+
+      final UserCredential credential = await _firebaseAuth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      print(
+        '✅ FirebaseAuthService: User created - uid=${credential.user?.uid} at ${DateTime.now()}',
       );
 
       if (credential.user != null) {
         // Update display name immediately
+        print('🔵 FirebaseAuthService: Updating display name to: $fullName');
         await credential.user!.updateDisplayName(fullName);
-        
-        // Force reload to get updated user info
-        await credential.user!.reload();
-        
-        try {
-          await ApiService.registerUser(fullName, email);
-        } catch (e) {
-          print('Backend registration failed: $e');
-          // Non-fatal error, continue with Firebase auth success
-        }
-         await NotificationService.sendTokenToServer();
 
-        return AuthResult.success(credential.user!);
+        // ✅ CRITICAL: Force reload to ensure auth state stream emits
+        print(
+          '🔵 FirebaseAuthService: Reloading user to trigger auth state change...',
+        );
+        await credential.user!.reload();
+
+        // ✅ Get fresh user object after reload
+        final User? refreshedUser = _firebaseAuth.currentUser;
+        print(
+          '✅ FirebaseAuthService: User reloaded - displayName=${refreshedUser?.displayName}',
+        );
+        await Future.delayed(
+          Duration(milliseconds: 100),
+        ); // Give stream time to process
+        print(
+          '🔔 FirebaseAuthService: Waiting for auth stream to propagate...',
+        );
+        // ✅✅✅ CRITICAL FIX: Run backend calls in background WITHOUT blocking
+        print(
+          '🚀 IMMEDIATE RETURN: Returning success WITHOUT waiting for backend',
+        );
+        print('🚀 Backend registration will continue in background');
+        _registerUserInBackground(fullName, email, credential.user!.uid);
+
+        // ✅ Return immediately - don't wait for backend!
+        return AuthResult.success(refreshedUser ?? credential.user!);
       } else {
+        print('❌ FirebaseAuthService: credential.user is null!');
         return AuthResult.error('Failed to create user');
       }
     } on FirebaseAuthException catch (e) {
+      print(
+        '❌ FirebaseAuthService: FirebaseAuthException - ${e.code}: ${e.message}',
+      );
       return AuthResult.error(_handleFirebaseAuthError(e));
     } catch (e) {
+      print('❌ FirebaseAuthService: Unexpected error: $e');
       return AuthResult.error('An unexpected error occurred: $e');
     }
   }
 
-  // Sign in with email and password
+  // ✅✅✅ NEW METHOD: Register user in background without blocking UI
+  static void _registerUserInBackground(
+    String fullName,
+    String email,
+    String uid,
+  ) {
+    // Run in separate future so it doesn't block auth flow
+    Future.microtask(() async {
+      try {
+        print(
+          '🔵 Background: Starting backend registration for $email at ${DateTime.now()}',
+        );
+
+        // Backend registration (non-blocking with timeout)
+        // FIXED: Include firebaseUserUID as per API reference
+        await ApiService.registerUser(fullName, email, firebaseUserUID: uid).timeout(
+          Duration(seconds: 10), // Prevent hanging
+          onTimeout: () {
+            print('⚠️ Background: Backend registration timed out after 10s');
+            throw TimeoutException('Backend registration timeout');
+          },
+        );
+        print(
+          '✅ Background: Backend registration successful at ${DateTime.now()}',
+        );
+
+        // Send FCM token (non-blocking with timeout)
+        await NotificationService.sendTokenToServer().timeout(
+          Duration(seconds: 10),
+          onTimeout: () {
+            print('⚠️ Background: FCM token send timed out after 10s');
+            throw TimeoutException('FCM token timeout');
+          },
+        );
+        print('✅ Background: FCM token sent at ${DateTime.now()}');
+      } catch (e) {
+        print('⚠️ Background: Registration failed (non-fatal): $e');
+        // This is non-fatal - user is already signed in via Firebase
+        // Backend registration can be retried later
+      }
+    });
+  }
+
+  // ✅✅✅ FIXED: Sign in with email and password (NON-BLOCKING)
   static Future<AuthResult> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      final UserCredential credential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+      print(
+        '🔵 FirebaseAuthService: Signing in with email: $email at ${DateTime.now()}',
+      );
+
+      final UserCredential credential = await _firebaseAuth
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      print(
+        '✅ FirebaseAuthService: Sign-in successful - uid=${credential.user?.uid} at ${DateTime.now()}',
       );
 
       if (credential.user != null) {
+        // ✅ Send FCM token in background (don't block sign-in)
+        print(
+          '🚀 IMMEDIATE RETURN: Returning success, FCM token will be sent in background',
+        );
+        _sendFCMTokenInBackground(credential.user!.uid);
+
         return AuthResult.success(credential.user!);
       } else {
+        print('❌ FirebaseAuthService: credential.user is null!');
         return AuthResult.error('Failed to sign in');
       }
     } on FirebaseAuthException catch (e) {
+      print(
+        '❌ FirebaseAuthService: FirebaseAuthException - ${e.code}: ${e.message}',
+      );
       return AuthResult.error(_handleFirebaseAuthError(e));
     } catch (e) {
+      print('❌ FirebaseAuthService: Unexpected error: $e');
       return AuthResult.error('An unexpected error occurred: $e');
     }
   }
 
-  // Google Sign In (improved performance)
+  // ✅✅✅ NEW METHOD: Send FCM token in background
+  static void _sendFCMTokenInBackground(String uid) {
+    Future.microtask(() async {
+      try {
+        print(
+          '🔵 Background: Sending FCM token for user $uid at ${DateTime.now()}',
+        );
+        await NotificationService.sendTokenToServer().timeout(
+          Duration(seconds: 10),
+          onTimeout: () {
+            print('⚠️ Background: FCM token send timed out');
+            throw TimeoutException('FCM token timeout');
+          },
+        );
+        print('✅ Background: FCM token sent successfully at ${DateTime.now()}');
+      } catch (e) {
+        print('⚠️ Background: FCM token send failed (non-fatal): $e');
+        // Non-fatal - can retry later
+      }
+    });
+  }
+
+  // ✅✅✅ FIXED: Google Sign In (NON-BLOCKING)
   static Future<AuthResult> signInWithGoogle() async {
     try {
       await _initializeGoogleSignIn();
 
-      // Clear any existing sign-in to ensure fresh authentication
-      // await _googleSignIn.signOut();
-      
+      print(
+        '🔵 FirebaseAuthService: Starting Google Sign-In at ${DateTime.now()}',
+      );
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      
+
       if (googleUser == null) {
+        print('⚠️ FirebaseAuthService: Google sign-in canceled by user');
         return AuthResult.error('Google sign in was canceled by the user.');
       }
-      
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      
-      // Ensure we have the required tokens
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
       if (googleAuth.idToken == null) {
+        print('❌ FirebaseAuthService: Failed to get Google ID token');
         return AuthResult.error('Failed to get Google authentication tokens.');
       }
-      
+
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      
-      final UserCredential userCredential = await _firebaseAuth.signInWithCredential(credential);
+
+      final UserCredential userCredential = await _firebaseAuth
+          .signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user == null) {
+        print('❌ FirebaseAuthService: Firebase returned null user');
         return AuthResult.error('Failed to sign in with Google.');
       }
-      
-      // Handle new user registration
+
+      print(
+        '✅ FirebaseAuthService: Google sign-in successful - uid=${user.uid} at ${DateTime.now()}',
+      );
+
+      // ✅ Handle new user registration in background (don't block)
       if (userCredential.additionalUserInfo?.isNewUser == true) {
-        try {
-          await ApiService.registerUser(
-            user.displayName ?? 'Google User', 
-            user.email!,
-          );
-        } catch (e) {
-          print('Backend registration for Google user failed: $e');
-          // Non-fatal error, continue with Firebase auth success
-        }
+        print('🚀 New Google user - registering in background');
+        _registerUserInBackground(
+          user.displayName ?? 'Google User',
+          user.email!,
+          user.uid,
+        );
+      } else {
+        print('🚀 Existing Google user - sending FCM token in background');
+        // Existing user - just send FCM token in background
+        _sendFCMTokenInBackground(user.uid);
       }
 
-      await NotificationService.sendTokenToServer();
-
-      return AuthResult.success(user); 
+      return AuthResult.success(user);
     } on FirebaseAuthException catch (e) {
+      print(
+        '❌ FirebaseAuthService: FirebaseAuthException - ${e.code}: ${e.message}',
+      );
       return AuthResult.error(_handleFirebaseAuthError(e));
     } catch (e) {
-      print("Google Sign-in error: $e");
-      return AuthResult.error('An unexpected error occurred during Google sign-in: ${e.toString()}');
+      print('❌ FirebaseAuthService: Google Sign-in error: $e');
+      return AuthResult.error(
+        'An unexpected error occurred during Google sign-in: ${e.toString()}',
+      );
     }
   }
 
   // Sign out (improved cleanup)
   static Future<void> signOut() async {
     try {
-      // Sign out from both services concurrently for better performance
-      await Future.wait([
-        _firebaseAuth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      await Future.wait([_firebaseAuth.signOut(), _googleSignIn.signOut()]);
+      print('✅ FirebaseAuthService: Sign-out completed');
     } catch (e) {
-      print('Error signing out: $e');
-      // Still throw to let calling code know about the error
+      print('❌ FirebaseAuthService: Sign-out error: $e');
       throw Exception('Failed to sign out: $e');
     }
   }
@@ -196,10 +309,10 @@ class FirebaseAuthService {
     }
   }
 
-  // Handle Firebase Auth errors (enhanced)
+  // Handle Firebase Auth errors
   static String _handleFirebaseAuthError(FirebaseAuthException e) {
     print('Firebase Auth Error: ${e.code} - ${e.message}');
-    
+
     switch (e.code) {
       case 'user-not-found':
         return 'No account found with this email address.';
@@ -237,11 +350,7 @@ class AuthResult {
   final User? user;
   final String? error;
 
-  AuthResult.success(this.user)
-      : isSuccess = true,
-        error = null;
+  AuthResult.success(this.user) : isSuccess = true, error = null;
 
-  AuthResult.error(this.error)
-      : isSuccess = false,
-        user = null;
+  AuthResult.error(this.error) : isSuccess = false, user = null;
 }

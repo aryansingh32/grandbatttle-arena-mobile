@@ -4,6 +4,8 @@ import 'package:grand_battle_arena/components/tournamentdetails.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
+import 'package:provider/provider.dart';
+import 'package:grand_battle_arena/services/filter_provider.dart'; // CHANGE: share filters with home quick chips.
 
 // Tournament data model
 class Tournament {
@@ -44,11 +46,6 @@ class TournamentContent extends StatefulWidget {
 }
 
 class _TournamentContentState extends State<TournamentContent> {
-  // Filter states
-  String selectedGameFilter = "All";
-  String selectedTimeSlot = "All";
-  bool isLoading = false;
-
   // API tournament data
   List<TournamentModel> apiTournaments = [];
   bool _isApiLoading = true;
@@ -65,26 +62,21 @@ class _TournamentContentState extends State<TournamentContent> {
 
   Future<void> _loadTournaments() async {
     try {
+      if (!mounted) return;
       setState(() => _isApiLoading = true);
       final tournaments = await ApiService.getAllTournaments();
+      if (!mounted) return;
       setState(() {
         apiTournaments = tournaments;
         _isApiLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isApiLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load tournaments: $e')),
       );
     }
-  }
-
-  List<TournamentModel> get filteredTournaments {
-    return apiTournaments.where((tournament) {
-      bool gameMatch = selectedGameFilter == "All" || tournament.game.contains(selectedGameFilter);
-      bool timeMatch = selectedTimeSlot == "All"; // Implement time filtering if needed
-      return gameMatch && timeMatch && tournament.status == "UPCOMING";
-    }).toList();
   }
 
   @override
@@ -143,36 +135,36 @@ class _TournamentContentState extends State<TournamentContent> {
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: gameFilters.map((filter) {
-                      bool isSelected = selectedGameFilter == filter;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedGameFilter = filter;
-                          });
-                        },
-                        child: Container(
-                          margin: EdgeInsets.only(right: 10),
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Appcolor.secondary : Color.fromRGBO(63, 62, 62, 1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? Appcolor.secondary : Appcolor.grey.withOpacity(0.3),
+                  child: Consumer<FilterProvider>(
+                    builder: (context, filters, _) {
+                      return Row(
+                        children: gameFilters.map((filter) {
+                          bool isSelected = filters.gameFilter == filter;
+                          return GestureDetector(
+                            onTap: () => filters.setGameFilter(filter),
+                            child: Container(
+                              margin: EdgeInsets.only(right: 10),
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Appcolor.secondary : Color.fromRGBO(63, 62, 62, 1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? Appcolor.secondary : Appcolor.grey.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                filter,
+                                style: TextStyle(
+                                  color: isSelected ? Appcolor.primary : Appcolor.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            filter,
-                            style: TextStyle(
-                              color: isSelected ? Appcolor.primary : Appcolor.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
                 ),
               ),
@@ -196,36 +188,36 @@ class _TournamentContentState extends State<TournamentContent> {
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: timeSlots.map((slot) {
-                      bool isSelected = selectedTimeSlot == slot;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedTimeSlot = slot;
-                          });
-                        },
-                        child: Container(
-                          margin: EdgeInsets.only(right: 10),
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected ? Appcolor.secondary : Color.fromRGBO(63, 62, 62, 1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected ? Appcolor.secondary : Appcolor.grey.withOpacity(0.3),
+                  child: Consumer<FilterProvider>(
+                    builder: (context, filters, _) {
+                      return Row(
+                        children: timeSlots.map((slot) {
+                          bool isSelected = filters.timeSlotFilter == slot;
+                          return GestureDetector(
+                            onTap: () => filters.setTimeSlotFilter(slot),
+                            child: Container(
+                              margin: EdgeInsets.only(right: 10),
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected ? Appcolor.secondary : Color.fromRGBO(63, 62, 62, 1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected ? Appcolor.secondary : Appcolor.grey.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                slot,
+                                style: TextStyle(
+                                  color: isSelected ? Appcolor.primary : Appcolor.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            slot,
-                            style: TextStyle(
-                              color: isSelected ? Appcolor.primary : Appcolor.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
                 ),
               ),
@@ -239,6 +231,7 @@ class _TournamentContentState extends State<TournamentContent> {
   }
 
   Widget _buildTournamentList() {
+    final filters = context.watch<FilterProvider>();
     if (_isApiLoading) {
       return ListView.builder(
         itemCount: 3,
@@ -258,7 +251,10 @@ class _TournamentContentState extends State<TournamentContent> {
       );
     }
 
-    List<TournamentModel> tournaments = filteredTournaments;
+    final tournaments = apiTournaments
+        .where((tournament) => tournament.status == "UPCOMING")
+        .where(filters.matchesTournament)
+        .toList();
 
     if (tournaments.isEmpty) {
       return Center(
@@ -294,43 +290,44 @@ class _TournamentContentState extends State<TournamentContent> {
 
     // Inside _buildTournamentList method in tournament.dart
 
-return ListView.builder(
-  itemCount: tournaments.length,
-  itemBuilder: (context, index) {
-    TournamentModel tournament = tournaments[index];
-    return TournamentCard(
-      // FIX: Use 'imageUrl' and 'title' from the model
-      imageUrl: tournament.imageUrl ?? 'assets/images/freefirebanner4.webp',
-      title: tournament.title,
-      
-      // FIX: Use the model's pre-formatted date-time getter
-      dateTime: tournament.dateTimeFormatted, 
-      
-      prize: tournament.prizePool.toString(),
-      entry: tournament.entryFee.toString(),
-      teamSize: tournament.teamSize,
-      
-      // FIX: Use the 'registeredPlayers' field for an accurate count
-      enrolled: "${tournament.registeredPlayers}/${tournament.maxPlayers}",
-      
-      map: tournament.map ?? "TBD", // Handle potential null map
-      game: tournament.game,
-      isDivider: true,
-      
-      // FIX: Pass the tournament ID to the details page
-      onRegister: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TournamentDetailsPage(
-              tournamentId: tournament.id, // Pass the ID here
-            ),
-          ),
+    return ListView.builder(
+      itemCount: tournaments.length,
+      itemBuilder: (context, index) {
+        TournamentModel tournament = tournaments[index];
+        return TournamentCard(
+          imageUrl: tournament.imageUrl ?? 'assets/images/freefirebanner4.webp',
+          title: tournament.title,
+          dateTime: tournament.dateTimeFormatted,
+          prize: tournament.prizePool.toString(),
+          entry: tournament.entryFee.toString(),
+          teamSize: tournament.teamSize,
+          enrolled: "${tournament.registeredPlayers}/${tournament.maxPlayers}",
+          map: tournament.map ?? "TBD",
+          game: tournament.game,
+          isDivider: true,
+          onRegister: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TournamentDetailsPage(
+                  tournamentId: tournament.id,
+                ),
+              ),
+            );
+          },
+          onViewDetails: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TournamentDetailsPage(
+                  tournamentId: tournament.id,
+                ),
+              ),
+            );
+          },
         );
       },
     );
-  },
-);
   }
   
 

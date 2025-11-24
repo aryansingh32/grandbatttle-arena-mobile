@@ -9,6 +9,8 @@ import 'package:grand_battle_arena/models/tournament_model.dart';
 import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
+import 'package:grand_battle_arena/services/booking_refresh_notifier.dart';
 
 enum TeamType {
   solo,
@@ -411,7 +413,8 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
         selectedTeamIndex = null;
       });
       
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
+      context.read<BookingRefreshNotifier>().ping();
       _showSuccessSnackBar('${playersPayload.length} slot(s) booked successfully! 🎉');
 
     } catch (e) {
@@ -780,6 +783,50 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
         Text(
           label,
           style: TextStyle(color: Colors.grey[500], fontSize: 10),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRewardHighlight() {
+    if (tournament == null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Appcolor.primary.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Appcolor.secondary.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _rewardChip('Per Kill', '+${tournament!.perKillCoins}'),
+          _rewardChip('1st', tournament!.firstPlacePrize.toString()),
+          _rewardChip('2nd', tournament!.secondPlacePrize.toString()),
+          _rewardChip('3rd', tournament!.thirdPlacePrize.toString()),
+        ],
+      ),
+    );
+  }
+
+  Widget _rewardChip(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Appcolor.grey, fontSize: 11)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Image.asset("assets/icons/dollar.png", height: 14),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Appcolor.secondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1398,6 +1445,8 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                                 ),
                               ],
                             ),
+                          const SizedBox(height: 12),
+                          _buildRewardHighlight(),
                           ],
                         ),
                       ),

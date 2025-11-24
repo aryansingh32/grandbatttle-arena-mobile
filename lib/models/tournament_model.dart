@@ -1,6 +1,8 @@
 // lib/models/tournament_model.dart
 // FIXED VERSION - Robust team size parsing
 
+import 'score_entry.dart';
+
 class TournamentModel {
   final int id;
   final String title;
@@ -18,6 +20,11 @@ class TournamentModel {
   final List<String> rules;
   final int registeredPlayers;
   final List<ParticipantModel> participants;
+  final List<ScoreEntry> scoreboard; // CHANGE: expose per-player earnings for scorecards.
+  final int? perKillReward;
+  final int? firstPrize;
+  final int? secondPrize;
+  final int? thirdPrize;
 
   TournamentModel({
     required this.id,
@@ -36,11 +43,18 @@ class TournamentModel {
     this.rules = const [],
     this.registeredPlayers = 0,
     this.participants = const [],
+    this.scoreboard = const [],
+    this.perKillReward,
+    this.firstPrize,
+    this.secondPrize,
+    this.thirdPrize,
   });
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
     // CRITICAL FIX: Parse team size with comprehensive handling
-    String parsedTeamSize = _parseTeamSize(json['teamSize']);
+    final rawTeamSize =
+        json['teamSize'] ?? json['team_type'] ?? json['teamType'] ?? json['team_size'];
+    String parsedTeamSize = _parseTeamSize(rawTeamSize);
     
     print('✅ Tournament ${json['id']}: teamSize="${json['teamSize']}" → "$parsedTeamSize"');
 
@@ -61,6 +75,11 @@ class TournamentModel {
       rules: _parseRules(json['rules']),
       registeredPlayers: _calculateRegisteredPlayers(json),
       participants: _parseParticipants(json['participants']),
+      scoreboard: _parseScoreboard(json['scoreboard']),
+      perKillReward: json['perKillReward'] as int?,
+      firstPrize: json['firstPrize'] as int?,
+      secondPrize: json['secondPrize'] as int?,
+      thirdPrize: json['thirdPrize'] as int?,
     );
   }
 
@@ -126,6 +145,13 @@ class TournamentModel {
     return [];
   }
 
+  static List<ScoreEntry> _parseScoreboard(dynamic data) {
+    if (data == null || data is! List) return const [];
+    return data
+        .map((entry) => ScoreEntry.fromJson(entry as Map<String, dynamic>))
+        .toList();
+  }
+
   // Getters for team configuration
   int get playersPerTeam {
     switch (teamSize.toLowerCase()) {
@@ -175,6 +201,11 @@ class TournamentModel {
   Duration get timeUntilStart => startTime.difference(DateTime.now());
   bool get hasStarted => timeUntilStart.isNegative;
   bool get isUpcoming => !hasStarted && status.toUpperCase() == 'UPCOMING';
+  bool get hasScoreboard => scoreboard.isNotEmpty;
+  int get perKillCoins => perKillReward ?? 5;
+  int get firstPlacePrize => firstPrize ?? (prizePool ~/ 2);
+  int get secondPlacePrize => secondPrize ?? (prizePool ~/ 3);
+  int get thirdPlacePrize => thirdPrize ?? (prizePool ~/ 5);
 
   @override
   String toString() {

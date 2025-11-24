@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:grand_battle_arena/components/balancecard.dart';
 import 'package:grand_battle_arena/components/bannerslider.dart';
 import 'package:grand_battle_arena/components/homegames.dart';
 import 'package:grand_battle_arena/components/homeleaderboard.dart';
 import 'package:grand_battle_arena/components/mybookingscroller.dart';
-import 'package:grand_battle_arena/items/mybookingcard.dart';
+import 'package:grand_battle_arena/components/home_quick_filters.dart';
 // import 'package:grand_battle_arena/components/navigatorbar.dart';
 import 'package:grand_battle_arena/components/tournamentcards.dart';
 import 'package:grand_battle_arena/components/topbar.dart';
@@ -36,8 +35,8 @@ class _HomeState extends State<Home> {
                   children: [
                     TopBar(), // For TopBar
                     BannerSlider(),
-                    // Balancecard(), // Balance Card
                     Homegames(), // Games 
+                    const HomeQuickFilters(), // CHANGE: add stylish quick filters bar.
                     Padding( 
                       padding: const EdgeInsets.all(10.0),
                       child: Center(
@@ -50,23 +49,8 @@ class _HomeState extends State<Home> {
                         ),
                       ),
                     ),
-
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
-                      child: Text(
-                        "My Tournaments",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          fontSize: 25,
-                          letterSpacing: 0.5,
-                          color: Appcolor.white,
-                        ),
-                      ),
-                    ),
-
-
                     MyBookingsScroller(),
-                    SizedBox(height: 100,),
+                    const SizedBox(height: 24), // CHANGE: keep layout tight when the section is hidden.
                     TournamentCards(),
                     HomeLeaderBoard(),
                   ],

@@ -92,12 +92,11 @@ class WelcomePage extends StatelessWidget {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Instead of pushing a page, flip state inside AuthWrapper
-                        // For now just pop back — AuthWrapper decides what to show.
-                        Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignInPage()),
-                      );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SignInPage(),
+                          ),
+                        ); // CHANGE: keep AuthWrapper underneath so it can react.
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Appcolor.secondary,
@@ -123,10 +122,11 @@ class WelcomePage extends StatelessWidget {
                     height: 50,
                     child: OutlinedButton(
                       onPressed: () {
-                        Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => const SignUpPage()),
-  );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const SignUpPage(),
+                          ),
+                        ); // CHANGE: allow wrapper stream to control navigation.
                       },
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: Appcolor.secondary, width: 2),

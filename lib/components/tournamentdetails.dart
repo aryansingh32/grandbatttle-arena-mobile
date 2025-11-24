@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/components/registertournament.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
+import 'package:grand_battle_arena/services/booking_refresh_notifier.dart';
 
 class TournamentDetailsPage extends StatefulWidget {
   final int tournamentId;
@@ -17,15 +21,30 @@ class TournamentDetailsPage extends StatefulWidget {
 }
 
 class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
-  int selectedTab = 0; // 0 for Rules, 1 for Participants
+  int selectedTab = 0; // 0=Rules,1=Participants,2=Scoreboard
   TournamentModel? tournament;
   bool isLoading = true;
   String? error;
+  String _scoreFilter = 'All';
+  String? _currentUserUid;
+  bool _userHasBooking = false;
+  List<ParticipantModel> _userParticipants = [];
 
   @override
   void initState() {
     super.initState();
+    _currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     _loadTournamentDetails();
+  }
+
+  void _evaluateUserBooking(TournamentModel data) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final mine = data.participants.where((p) => p.userId == uid).toList();
+    setState(() {
+      _currentUserUid = uid;
+      _userHasBooking = mine.isNotEmpty;
+      _userParticipants = mine;
+    });
   }
 
   Future<void> _loadTournamentDetails() async {
@@ -35,12 +54,16 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
         error = null;
       });
 
-      final tournamentData = await ApiService.getTournamentById(widget.tournamentId);
+      // FIX: Use authenticated endpoint to get rules, participants, and scoreboard
+      // The public endpoint (/api/public/tournaments/{id}) doesn't include these fields
+      // The authenticated endpoint (/api/tournaments/{id}) includes all tournament data
+      final tournamentData = await ApiService.getTournamentDetails(widget.tournamentId);
       
       setState(() {
         tournament = tournamentData;
         isLoading = false;
       });
+      _evaluateUserBooking(tournamentData);
     } catch (e) {
       setState(() {
         error = e.toString();
@@ -201,8 +224,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
 
         // Tournament details section
         Expanded(
-          child: Container(
-            width: double.infinity,
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,78 +342,67 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
 
                 const SizedBox(height: 24),
 
+                _buildPrizeBreakdown(),
+                if (_userHasBooking && (tournament?.hasCredentials ?? false))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: _buildCredentialCard(),
+                  ),
+                if (_userHasBooking && _userParticipants.isNotEmpty)
+                  _buildUserSlotSummary(),
+
                 // Rules and Participants tabs
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => setState(() => selectedTab = 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Rules',
-                            style: TextStyle(
-                              color: selectedTab == 0
-                                  ? const Color(0xFFFFD700)
-                                  : const Color(0xFF888888),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: 35,
-                            height: 2,
-                            color: selectedTab == 0
-                                ? const Color(0xFFFFD700)
-                                : Colors.transparent,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 28),
-                    GestureDetector(
-                      onTap: () => setState(() => selectedTab = 1),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Participants',
-                            style: TextStyle(
-                              color: selectedTab == 1
-                                  ? const Color(0xFFFFD700)
-                                  : const Color(0xFF888888),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: 75,
-                            height: 2,
-                            color: selectedTab == 1
-                                ? const Color(0xFFFFD700)
-                                : Colors.transparent,
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildTabButton('Rules', 0),
+                    const SizedBox(width: 16),
+                    _buildTabButton('Participants', 1),
+                    const SizedBox(width: 16),
+                    _buildTabButton('Scoreboard', 2),
                   ],
                 ),
 
                 const SizedBox(height: 20),
 
                 // Content based on selected tab
-                Expanded(
-                  child: selectedTab == 0
-                      ? _buildRulesContent()
-                      : _buildParticipantsContent(),
-                ),
+                _buildTabBody(),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTabBody() {
+    if (selectedTab == 0) return _buildRulesContent();
+    if (selectedTab == 1) return _buildParticipantsContent();
+    return _buildScoreboardContent();
+  }
+
+  Widget _buildTabButton(String label, int index) {
+    final isActive = selectedTab == index;
+    return GestureDetector(
+      onTap: () => setState(() => selectedTab = index),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? const Color(0xFFFFD700) : const Color(0xFF888888),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: 60,
+            height: 2,
+            color: isActive ? const Color(0xFFFFD700) : Colors.transparent,
+          ),
+        ],
+      ),
     );
   }
 
@@ -476,35 +487,42 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
         ),
       );
     }
-
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: tournament!.participants.length,
       itemBuilder: (context, i) {
         final participant = tournament!.participants[i];
+        final isMe = participant.userId != null &&
+            participant.userId!.isNotEmpty &&
+            participant.userId == _currentUserUid;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A),
+            color: isMe ? Appcolor.secondary.withOpacity(0.15) : const Color(0xFF1A1A1A),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF333333), width: 1),
+            border: Border.all(
+              color: isMe ? Appcolor.secondary : const Color(0xFF333333),
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF333333),
+                decoration: BoxDecoration(
+                  color: isMe ? Appcolor.secondary : const Color(0xFF333333),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
-                    participant.playerName.isNotEmpty 
+                    participant.playerName.isNotEmpty
                         ? participant.playerName[0].toUpperCase()
                         : 'P',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isMe ? Appcolor.primary : Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -537,13 +555,13 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F5132),
+                  color: isMe ? Appcolor.secondary : const Color(0xFF0F5132),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
-                  'Joined',
+                child: Text(
+                  isMe ? 'You' : 'Joined',
                   style: TextStyle(
-                    color: Color(0xFF75B798),
+                    color: isMe ? Appcolor.primary : const Color(0xFF75B798),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -553,6 +571,296 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPrizeBreakdown() {
+    if (tournament == null) return const SizedBox.shrink();
+    final killReward = tournament!.perKillCoins;
+    final first = tournament!.firstPlacePrize;
+    final second = tournament!.secondPlacePrize;
+    final third = tournament!.thirdPlacePrize;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Appcolor.cardsColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Rewards Breakdown',
+            style: const TextStyle(
+              color: Appcolor.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _rewardPill('Per Kill', '+$killReward'),
+              _rewardPill('1st Place', first.toString()),
+              _rewardPill('2nd Place', second.toString()),
+              _rewardPill('3rd Place', third.toString()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rewardPill(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Appcolor.primary.withOpacity(0.4),
+        border: Border.all(color: Appcolor.secondary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Appcolor.grey,
+              fontSize: 11,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Image.asset("assets/icons/dollar.png", height: 14),
+              const SizedBox(width: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Appcolor.secondary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCredentialCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Appcolor.cardsColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Appcolor.secondary.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Match Credentials',
+            style: const TextStyle(
+              color: Appcolor.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _credentialRow('Room ID', tournament!.gameId ?? '-'),
+          const SizedBox(height: 8),
+          _credentialRow('Password', tournament!.gamePassword ?? '-'),
+        ],
+      ),
+    );
+  }
+
+  Widget _credentialRow(String label, String value) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(color: Appcolor.grey, fontSize: 12)),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Appcolor.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Copy $label',
+          onPressed: value.isEmpty
+              ? null
+              : () {
+                  Clipboard.setData(ClipboardData(text: value));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$label copied')),
+                  );
+                },
+          icon: const Icon(Icons.copy, color: Appcolor.secondary, size: 18),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserSlotSummary() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0, bottom: 16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _userParticipants.map((p) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Appcolor.secondary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Appcolor.secondary),
+            ),
+            child: Text(
+              'Your Slot ${p.slotNumber}',
+              style: const TextStyle(
+                color: Appcolor.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildScoreboardContent() {
+    final scores = tournament?.scoreboard ?? [];
+
+    if (scores.isEmpty) {
+      return const Center(
+        child: Text(
+          'Scoreboard will appear once admins publish match data.',
+          style: TextStyle(color: Colors.grey),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    final filtered = _scoreFilter == 'Top 3'
+        ? scores.take(3).toList()
+        : scores;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Score Card',
+              style: TextStyle(color: Appcolor.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            DropdownButton<String>(
+              dropdownColor: Appcolor.cardsColor,
+              value: _scoreFilter,
+              style: const TextStyle(color: Appcolor.white),
+              underline: SizedBox(),
+              items: const [
+                DropdownMenuItem(value: 'All', child: Text('All Players')),
+                DropdownMenuItem(value: 'Top 3', child: Text('Top 3')),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _scoreFilter = value);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Each kill grants ${tournament?.perKillCoins ?? 0} coins.',
+            style: const TextStyle(color: Appcolor.grey, fontSize: 12),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: filtered.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final entry = filtered[index];
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Appcolor.cardsColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Appcolor.secondary.withOpacity(0.2),
+                    child: Text(
+                      '#${entry.placement}',
+                      style: const TextStyle(color: Appcolor.secondary, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(entry.playerName,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        Text(
+                          'Team ${entry.teamName}',
+                          style: const TextStyle(color: Appcolor.grey, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('${entry.kills} Kills',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                      Row(
+                        children: [
+                          Image.asset("assets/icons/dollar.png", height: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '+${entry.coinsEarned}',
+                            style: const TextStyle(color: Appcolor.secondary, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -620,16 +928,23 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TournamentRegistrationPage(
-                    tournamentId: widget.tournamentId,
-                    tournament: tournament,
-                    // config: TournamentConfig.fromTournamentModel(tournament!),
+              onTap: () async {
+                final joined = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TournamentRegistrationPage(
+                      tournamentId: widget.tournamentId,
+                      tournament: tournament,
+                    ),
                   ),
-                ),
-              ),
+                );
+                if (joined == true) {
+                  await _loadTournamentDetails();
+                  if (mounted) {
+                    context.read<BookingRefreshNotifier>().ping();
+                  }
+                }
+              },
               child: Container(
                 height: 56,
                 decoration: BoxDecoration(

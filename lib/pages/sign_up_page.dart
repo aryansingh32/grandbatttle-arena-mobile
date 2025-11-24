@@ -19,7 +19,8 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -43,7 +44,10 @@ class _SignUpPageState extends State<SignUpPage> {
           appBar: AppBar(
             title: const Text(
               'Sign Up',
-              style: TextStyle(color: Appcolor.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Appcolor.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             backgroundColor: Appcolor.primary,
             elevation: 0,
@@ -72,36 +76,59 @@ class _SignUpPageState extends State<SignUpPage> {
                   const SizedBox(height: 30),
 
                   // Google Sign-In Button
+                  // Google Sign-In Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton.icon(
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
-                      icon: _isLoading
-                          ? const SizedBox.shrink()
-                          : Image.asset(
-                              'assets/images/google_logo.webp',
-                              height: 24.0,
-                            ),
-                      label: _isLoading
-                          ? const SizedBox(
-                              height: 24.0,
-                              width: 24.0,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                color: Appcolor.secondary,
+                      icon:
+                          _isLoading
+                              ? const SizedBox.shrink() // Hide icon when loading
+                              : Image.asset(
+                                'assets/images/google_logo.webp',
+                                height: 24.0,
                               ),
-                            )
-                          : const Text(
-                              'Continue with Google',
-                              style: TextStyle(
-                                color: Appcolor.primary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                      label:
+                          _isLoading
+                              ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    height: 20.0,
+                                    width: 20.0,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Appcolor.primary,
+                                      ), // Dark spinner
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Signing up...',
+                                    style: TextStyle(
+                                      color: Appcolor.primary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              )
+                              : const Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  color: Appcolor.primary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Appcolor.white,
+                        disabledBackgroundColor: Appcolor.white.withOpacity(
+                          0.9,
+                        ), // ✅✅✅ CRITICAL FIX
+                        elevation: _isLoading ? 2 : 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -116,7 +143,10 @@ class _SignUpPageState extends State<SignUpPage> {
                       Expanded(child: Divider(color: Appcolor.grey)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Text('OR', style: TextStyle(color: Appcolor.grey)),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(color: Appcolor.grey),
+                        ),
                       ),
                       Expanded(child: Divider(color: Appcolor.grey)),
                     ],
@@ -140,11 +170,14 @@ class _SignUpPageState extends State<SignUpPage> {
                   _buildPasswordField(
                     label: 'Password',
                     isPasswordVisible: _isPasswordVisible,
-                    onToggleVisibility: _isLoading
-                        ? null
-                        : () {
-                            setState(() => _isPasswordVisible = !_isPasswordVisible);
-                          },
+                    onToggleVisibility:
+                        _isLoading
+                            ? null
+                            : () {
+                              setState(
+                                () => _isPasswordVisible = !_isPasswordVisible,
+                              );
+                            },
                     controller: _passwordController,
                     enabled: !_isLoading,
                   ),
@@ -152,16 +185,22 @@ class _SignUpPageState extends State<SignUpPage> {
                   _buildPasswordField(
                     label: 'Confirm Password',
                     isPasswordVisible: _isConfirmPasswordVisible,
-                    onToggleVisibility: _isLoading
-                        ? null
-                        : () {
-                            setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible);
-                          },
+                    onToggleVisibility:
+                        _isLoading
+                            ? null
+                            : () {
+                              setState(
+                                () =>
+                                    _isConfirmPasswordVisible =
+                                        !_isConfirmPasswordVisible,
+                              );
+                            },
                     controller: _confirmPasswordController,
                     enabled: !_isLoading,
                   ),
                   const SizedBox(height: 30),
 
+                  // Create Account Button
                   // Create Account Button
                   SizedBox(
                     width: double.infinity,
@@ -169,23 +208,50 @@ class _SignUpPageState extends State<SignUpPage> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _handleCreateAccount,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Appcolor.secondary,
+                        backgroundColor:
+                            Appcolor.secondary, // ✅ Normal state - yellow
+                        disabledBackgroundColor: Appcolor.secondary.withOpacity(
+                          0.7,
+                        ), // ✅✅✅ CRITICAL FIX
+                        elevation: _isLoading ? 2 : 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(
-                              color: Appcolor.primary,
-                            )
-                          : const Text(
-                              'Create Account',
-                              style: TextStyle(
-                                color: Appcolor.primary,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                      child:
+                          _isLoading
+                              ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 20.0,
+                                    width: 20.0,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Appcolor.primary,
+                                      ), // Dark spinner on yellow
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Creating account...',
+                                    style: TextStyle(
+                                      color: Appcolor.primary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              )
+                              : const Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  color: Appcolor.primary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -231,22 +297,25 @@ class _SignUpPageState extends State<SignUpPage> {
                           TextSpan(
                             text: 'Sign in here',
                             style: TextStyle(
-                              color: _isLoading 
-                                  ? Appcolor.secondary.withOpacity(0.5)
-                                  : Appcolor.secondary,
+                              color:
+                                  _isLoading
+                                      ? Appcolor.secondary.withOpacity(0.5)
+                                      : Appcolor.secondary,
                               fontWeight: FontWeight.bold,
                             ),
-                            recognizer: _isLoading
-                                ? null
-                                : (TapGestureRecognizer()
-                                  ..onTap = () {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const SignInPage()
-                                      ),
-                                    );
-                                  }),
+                            recognizer:
+                                _isLoading
+                                    ? null
+                                    : (TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => const SignInPage(),
+                                          ),
+                                        );
+                                      }),
                           ),
                         ],
                       ),
@@ -274,7 +343,9 @@ class _SignUpPageState extends State<SignUpPage> {
       style: const TextStyle(color: Appcolor.white),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: enabled ? Appcolor.grey : Appcolor.grey.withOpacity(0.5)),
+        labelStyle: TextStyle(
+          color: enabled ? Appcolor.grey : Appcolor.grey.withOpacity(0.5),
+        ),
         filled: true,
         fillColor: Colors.black.withOpacity(0.2),
         border: OutlineInputBorder(
@@ -312,7 +383,9 @@ class _SignUpPageState extends State<SignUpPage> {
       obscureText: !isPasswordVisible,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: enabled ? Appcolor.grey : Appcolor.grey.withOpacity(0.5)),
+        labelStyle: TextStyle(
+          color: enabled ? Appcolor.grey : Appcolor.grey.withOpacity(0.5),
+        ),
         filled: true,
         fillColor: Colors.black.withOpacity(0.2),
         border: OutlineInputBorder(
@@ -343,24 +416,68 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _handleGoogleSignIn() async {
+    print('🔵 SignUpPage: Google sign-in tapped');
+
+    if (_isLoading) {
+      print('⚠️ SignUpPage: Already loading, ignoring');
+      return;
+    }
+
     setState(() => _isLoading = true);
-    
+
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
+
+    print('🔵 SignUpPage: Calling authManager.signInWithGoogle()');
     final success = await authManager.signInWithGoogle();
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      
-      if (!success && authManager.error != null) {
+    print('🔵 SignUpPage: Google sign-in result: $success');
+
+    if (!mounted) {
+      print('⚠️ SignUpPage: Widget unmounted');
+      return;
+    }
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      // ✅ Show success message
+      print('✅ SignUpPage: Google sign-in successful!');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Signed in with Google! Welcome.'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // ✅ AuthWrapper will navigate automatically
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // CHANGE: collapse sign up page to reveal home quickly.
+      }
+    } else {
+      // Show error
+      print('❌ SignUpPage: Google sign-in failed - ${authManager.error}');
+
+      if (authManager.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authManager.error!))
+          SnackBar(
+            content: Text(authManager.error!),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
-    // If success, AuthWrapper handles navigation automatically
   }
 
   void _handleCreateAccount() async {
+    print('📝 _handleCreateAccount: Starting sign-up at ${DateTime.now()}');
+
     // Validation
     if (_fullNameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
@@ -373,9 +490,9 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
       return;
     }
 
@@ -386,24 +503,80 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+    print('📝 _handleCreateAccount: Validation passed, setting loading state');
     setState(() => _isLoading = true);
 
     final authManager = Provider.of<AuthStateManager>(context, listen: false);
+
+    print('📝 _handleCreateAccount: Calling authManager.signUp()');
     final success = await authManager.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),
     );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      
-      if (!success && authManager.error != null) {
+    print('📝 _handleCreateAccount: signUp() returned success=$success');
+
+    if (!mounted) {
+      print('⚠️ _handleCreateAccount: Widget unmounted');
+      return;
+    }
+
+    setState(() => _isLoading = false);
+
+    if (success) {
+      // ✅ CRITICAL FIX: Sign-up creates account AND signs in automatically
+      // Firebase's createUserWithEmailAndPassword signs the user in immediately
+      // AuthWrapper will detect this and navigate to home
+
+      print('✅ _handleCreateAccount: Account created! User is now signed in.');
+      print('✅ AuthWrapper will navigate to home automatically...');
+
+      // Show success message
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authManager.error!))
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.celebration, color: Colors.white, size: 22),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Welcome to Battle Arena, ${_fullNameController.text.split(' ').first}! 🎮',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+
+      // ✅ NO MANUAL NAVIGATION - AuthWrapper handles it via authStateChanges()
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // CHANGE: allow AuthWrapper to reveal signed-in state instantly.
+      }
+    } else {
+      // Error handling
+      print('❌ _handleCreateAccount: Sign-up failed - ${authManager.error}');
+
+      if (authManager.error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(child: Text(authManager.error!)),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
         );
       }
     }
-    // If success, AuthWrapper handles navigation automatically
   }
 }

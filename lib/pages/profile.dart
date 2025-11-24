@@ -6,9 +6,12 @@ import 'package:grand_battle_arena/models/wallet_model.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/services/auth_state_manager.dart';
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
+import 'package:grand_battle_arena/services/notification_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -343,6 +346,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
         slivers: [
           _buildSliverAppBar(user),
           SliverToBoxAdapter(child: _buildStatsCard(wallet)),
+          SliverToBoxAdapter(child: _buildAccountDetails(user, wallet)),
           _buildSectionHeader("My Bookings"),
           const SliverToBoxAdapter(
             child: MyBookingsScroller(),
@@ -465,6 +469,65 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
             label: "Member Since",
             icon: Icons.calendar_today,
             color: Colors.greenAccent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountDetails(UserModel user, WalletModel wallet) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Appcolor.cardsColor,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Account Details',
+            style: TextStyle(
+              color: Appcolor.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildDetailRow('Username', user.userName),
+          _buildDetailRow('Email', user.email),
+          _buildDetailRow('UID', user.firebaseUserUID),
+          _buildDetailRow('Coins', NumberFormat.compact().format(wallet.coins ?? 0)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Appcolor.grey,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: const TextStyle(
+                color: Appcolor.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -597,6 +660,18 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
     return SliverList(
       delegate: SliverChildListDelegate([
         _ActionTile(
+          icon: Icons.system_update_alt,
+          title: "Check for Updates",
+          subtitle: "Verify you're on the latest build",
+          onTap: _checkForUpdates,
+        ),
+        _ActionTile(
+          icon: Icons.notifications_active,
+          title: "Refresh Notifications",
+          subtitle: "Resend your FCM token to the server",
+          onTap: _refreshNotificationToken,
+        ),
+        _ActionTile(
           icon: Icons.history,
           title: "Transaction History",
           subtitle: "View your coin transactions",
@@ -669,6 +744,64 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
         ),
       ]),
     );
+  }
+
+  Future<void> _refreshNotificationToken() async {
+    try {
+      await NotificationService.sendTokenToServer();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification token refreshed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to refresh notifications: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      final storeUri = Uri.parse(
+        'https://play.google.com/store/apps/details?id=com.esport.grand_battle_arena',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Current version: ${info.version}+${info.buildNumber}'),
+          action: SnackBarAction(
+            label: 'Open Store',
+            onPressed: () async {
+              if (!await launchUrl(storeUri, mode: LaunchMode.externalApplication)) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not open the store listing'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Update check failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

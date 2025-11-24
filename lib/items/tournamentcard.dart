@@ -15,6 +15,7 @@ class TournamentCard extends StatelessWidget {
   final String map;
   final String game;
   final VoidCallback onRegister;
+  final VoidCallback? onViewDetails;
   final bool isLoading;
   final bool isDivider;
   final double imgHeight;
@@ -33,6 +34,7 @@ class TournamentCard extends StatelessWidget {
     required this.map,
     required this.game,
     required this.onRegister,
+    this.onViewDetails,
     this.isLoading = false,
     this.isDivider = false,
     this.dividerHeight = 25,
@@ -43,6 +45,8 @@ class TournamentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) return _buildShimmerCard();
+
+    final imageHasScheme = Uri.tryParse(imageUrl)?.hasScheme ?? false;
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -59,12 +63,21 @@ class TournamentCard extends StatelessWidget {
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
               ),
-              child: Image.network(
-                imageUrl,
-                width: double.infinity,
-                height: imgHeight,
-                fit: BoxFit.cover,
-              ),
+              child: imageHasScheme
+                  ? Image.network(
+                      imageUrl,
+                      width: double.infinity,
+                      height: imgHeight,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _imageFallback(),
+                    )
+                  : Image.asset(
+                      imageUrl,
+                      width: double.infinity,
+                      height: imgHeight,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _imageFallback(),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
@@ -147,6 +160,7 @@ class TournamentCard extends StatelessWidget {
                           ]),
                         ],
                       ),
+                      const SizedBox(width: 15),
                       InkWell(
                         borderRadius: BorderRadius.circular(10),
                         onTap: onRegister,
@@ -167,7 +181,16 @@ class TournamentCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      
+                      // const SizedBox(width: 8),
+                      // OutlinedButton(
+                      //   onPressed: onViewDetails ?? onRegister,
+                      //   style: OutlinedButton.styleFrom(
+                      //     foregroundColor: Appcolor.secondary,
+                      //     side: const BorderSide(color: Appcolor.secondary),
+                      //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      //   ),
+                      //   child: const Text('Details'),
+                      // ),
                     ],
                   )
                 ],
@@ -175,6 +198,18 @@ class TournamentCard extends StatelessWidget {
             )
           ],
         ),
+      ),
+    );
+  }
+
+  /// CHANGE: graceful fallback when network/asset images fail.
+  Widget _imageFallback() {
+    return Container(
+      height: imgHeight,
+      width: double.infinity,
+      color: Appcolor.primary.withOpacity(0.5),
+      child: const Center(
+        child: Icon(Icons.image_not_supported, color: Appcolor.grey),
       ),
     );
   }

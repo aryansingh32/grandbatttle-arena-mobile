@@ -12,10 +12,11 @@ import 'package:grand_battle_arena/models/notification_model.dart';
 import 'package:grand_battle_arena/models/deposit_request_model.dart';
 import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/models/payment_qr_response.dart';
+import 'package:grand_battle_arena/models/wallet_ledger_model.dart';
 
 /// Enhanced API endpoints with notification and payment support
 class _ApiEndpoints {
-  static const String baseUrl = 'http://192.168.1.20:8080';
+  static const String baseUrl = 'https://grand-battle-arena-backend.onrender.com';
   static const String _api = '/api';
 
   // Public Endpoints
@@ -53,14 +54,26 @@ class _ApiEndpoints {
   // Helper methods
   static String getSlotSummary(int tournamentId) => '$slots/$tournamentId/summary';
   static String getTournamentDetail(int tournamentId) => '$tournaments/$tournamentId';
+  static String getTournamentByStatus(String status) => '$tournaments/status/$status';
   static String markNotificationRead(int notificationId) => '$_api/notifications/$notificationId/read';
   static String getPaymentQrByAmount(int amount) => '$paymentQr/$amount';
+  static String bookNextSlot(int tournamentId) => '$slots/book-next/$tournamentId';
+  static String cancelBooking(int slotId) => '$slots/$slotId/cancel';
+  static String getWalletLedger(String firebaseUID) => '$wallets/$firebaseUID/ledger';
+  static String cancelTransaction(int transactionId) => '$transactions/$transactionId/cancel';
+
+  // App Configuration Endpoints
+  static const String appVersion = '$_api/app/version';
+  static const String filters = '$_api/filters';
+  static const String platformInfo = '$_api/public/info';
+  static const String registrationRequirements = '$_api/public/registration/requirements';
 
   static const String banners = '$_api/banners';
 }
 
 /// Enhanced API Service with comprehensive error handling, notification and payment support
 class ApiService {
+  static const Duration _networkTimeout = Duration(seconds: 12); // CHANGE: keep calls snappy to avoid UI stalls.
   
    
   
@@ -103,9 +116,7 @@ class ApiService {
     try {
       final uri = Uri.parse('${_ApiEndpoints.baseUrl}$endpoint');
       final headers = await _getHeaders(requireAuth: requireAuth);
-      final response = await http.get(uri, headers: headers).timeout(
-        const Duration(seconds: 30),
-      );
+      final response = await http.get(uri, headers: headers).timeout(_networkTimeout);
       return response;
     } on SocketException {
       throw ApiException('No internet connection');
@@ -127,7 +138,7 @@ class ApiService {
         uri,
         headers: headers,
         body: json.encode(body),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(_networkTimeout);
       return response;
     } on SocketException {
       throw ApiException('No internet connection');
@@ -149,7 +160,27 @@ class ApiService {
         uri,
         headers: headers,
         body: body != null ? json.encode(body) : null,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(_networkTimeout);
+      return response;
+    } on SocketException {
+      throw ApiException('No internet connection');
+    } on HttpException catch (e) {
+      throw ApiException('Network error: ${e.message}');
+    } catch (e) {
+      throw ApiException('Request failed: $e');
+    }
+  }
+
+  static Future<http.Response> _delete(String endpoint, {
+    bool requireAuth = true
+  }) async {
+    try {
+      final uri = Uri.parse('${_ApiEndpoints.baseUrl}$endpoint');
+      final headers = await _getHeaders(requireAuth: requireAuth);
+      final response = await http.delete(
+        uri,
+        headers: headers,
+      ).timeout(_networkTimeout);
       return response;
     } on SocketException {
       throw ApiException('No internet connection');
@@ -202,15 +233,19 @@ static Future<Map<String, dynamic>> getNotificationStats() async {
 // Device Token Management for Enhanced Push Notifications
 // ===========================================================================
 
+/// Update device token for push notifications
+/// CRITICAL: This endpoint requires Firebase ID token authentication
 static Future<void> updateDeviceToken(String deviceToken) async {
   try {
-    await _post('/api/users/device-token', body: {
+    // FIXED: Use proper endpoint path according to API reference
+    await _post('${_ApiEndpoints._api}/users/device-token', body: {
       'deviceToken': deviceToken,
     });
-    print('Device token updated successfully');
+    print('✅ Device token updated successfully');
   } catch (e) {
-    print('Failed to update device token: $e');
+    print('❌ Failed to update device token: $e');
     // Don't throw here as this shouldn't block app functionality
+    // Token will be retried on next app launch
   }
 }
 
@@ -239,9 +274,10 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   // ===========================================================================
 
   /// Get QR code link for a specific amount (GET method)
+  /// FIXED: Payment endpoints don't require auth per API reference
   static Future<PaymentQrResponse> getPaymentQrByAmount(int amount) async {
     try {
-      final response = await _get(_ApiEndpoints.getPaymentQrByAmount(amount), requireAuth: true);
+      final response = await _get(_ApiEndpoints.getPaymentQrByAmount(amount), requireAuth: false);
       final data = _handleResponse(response);
        print('✅ Data being passed to fromJson: $data'); 
       return PaymentQrResponse.fromJson(data);
@@ -251,11 +287,12 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   }
 
   /// Get QR code link for a specific amount (POST method - alternative)
+  /// FIXED: Payment endpoints don't require auth per API reference
   static Future<PaymentQrResponse> getPaymentQr(int amount) async {
     try {
       final response = await _post(_ApiEndpoints.paymentQr, 
         body: {'amount': amount},
-        requireAuth: true
+        requireAuth: false
       );
       final data = _handleResponse(response);
       return PaymentQrResponse.fromJson(data);
@@ -265,10 +302,10 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   }
 
   /// Get list of all available payment amounts
- /// Get list of all available payment amounts and their corresponding coins
+  /// FIXED: Payment endpoints don't require auth per API reference
   static Future<List<AvailableAmount>> getAvailablePaymentAmounts() async {
     try {
-      final response = await _get(_ApiEndpoints.availableAmounts, requireAuth: true);
+      final response = await _get(_ApiEndpoints.availableAmounts, requireAuth: false);
       final data = _handleResponse(response) as List;
       // Map the list of json objects to a list of AvailableAmount models
       return data.map((json) => AvailableAmount.fromJson(json)).toList();
@@ -345,12 +382,28 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
     return data.map((json) => TournamentModel.fromJson(json)).toList();
   }
 
+  /// Get tournaments by status (UPCOMING, ONGOING, COMPLETED, CANCELLED)
+  static Future<List<TournamentModel>> getTournamentsByStatus(String status) async {
+    final response = await _get(_ApiEndpoints.getTournamentByStatus(status));
+    final data = _handleResponse(response) as List;
+    return data.map((json) => TournamentModel.fromJson(json)).toList();
+  }
+
   // ===========================================================================
   // User Management with Enhanced Error Handling
   // ===========================================================================
 
-  static Future<UserModel> registerUser(String userName, String email) async {
+  /// Register/Update Current User
+  /// FIXED: Now includes firebaseUserUID as per API reference
+  static Future<UserModel> registerUser(String userName, String email, {String? firebaseUserUID}) async {
+    // Get Firebase UID if not provided
+    final uid = firebaseUserUID ?? FirebaseAuthService.getCurrentUserUID();
+    if (uid == null) {
+      throw ApiException('Firebase user UID is required for registration');
+    }
+
     final response = await _post(_ApiEndpoints.users, body: {
+      'firebaseUserUID': uid,
       'userName': userName,
       'email': email,
     });
@@ -371,8 +424,12 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   static Future<List<SlotsModel>> getTournamentSlotSummary(int tournamentId) async {
     final response = await _get(_ApiEndpoints.getSlotSummary(tournamentId));
     final data = _handleResponse(response) as Map<String, dynamic>;
-    final slotsList = data['slots'] as List;
-    return slotsList.map((json) => SlotsModel.fromJson(json)).toList();
+    final rawSlots = data['slots'];
+    if (rawSlots is! List) {
+      print('⚠️ Slot summary response missing slots array for tournament $tournamentId');
+      return [];
+    }
+    return rawSlots.map((json) => SlotsModel.fromJson(json)).toList();
   }
 
   static Future<SlotsModel> bookSlot(int tournamentId, String playerName, int slotNumber) async {
@@ -401,6 +458,24 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
     });
     final data = _handleResponse(response) as List;
     return data.map((json) => SlotsModel.fromJson(json)).toList();
+  }
+
+  /// Book next available slot
+  static Future<SlotsModel> bookNextAvailableSlot(int tournamentId, String playerName) async {
+    final response = await _post(_ApiEndpoints.bookNextSlot(tournamentId), body: {
+      'playerName': playerName,
+    });
+    final data = _handleResponse(response);
+    return SlotsModel.fromJson(data);
+  }
+
+  /// Cancel my booking
+  static Future<void> cancelBooking(int slotId) async {
+    final response = await _delete(_ApiEndpoints.cancelBooking(slotId));
+    // 204 No Content - just verify success
+    if (response.statusCode != 204) {
+      throw ApiException('Failed to cancel booking: ${response.statusCode}');
+    }
   }
 
   // ===========================================================================
@@ -432,6 +507,13 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
     return WalletModel.fromJson(data);
   }
 
+  /// Get wallet ledger (transaction history)
+  static Future<List<WalletLedgerModel>> getWalletLedger(String firebaseUID) async {
+    final response = await _get(_ApiEndpoints.getWalletLedger(firebaseUID));
+    final data = _handleResponse(response) as List;
+    return data.map((json) => WalletLedgerModel.fromJson(json)).toList();
+  }
+
   static Future<TransactionModel> createDepositRequest(String transactionUID, int amount) async {
     final depositRequest = DepositRequestModel(
       transactionUID: transactionUID,
@@ -442,8 +524,20 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
     return TransactionModel.fromJson(data);
   }
 
-  static Future<TransactionModel> createWithdrawalRequest(int amount) async {
-    final response = await _post(_ApiEndpoints.withdraw, body: {'amount': amount});
+  /// Create withdrawal request with UPI ID
+  /// FIXED: Sends exact UPI ID as transactionUID (not hashed)
+  static Future<TransactionModel> createWithdrawalRequest(int amount, {String? upiId}) async {
+    final body = <String, dynamic>{
+      'amount': amount,
+    };
+    
+    // CRITICAL FIX: Send exact UPI ID as transactionUID if provided
+    // Backend should receive the exact UPI ID, not a hash
+    if (upiId != null && upiId.isNotEmpty) {
+      body['transactionUID'] = upiId; // Send exact UPI ID
+    }
+    
+    final response = await _post(_ApiEndpoints.withdraw, body: body);
     final data = _handleResponse(response);
     return TransactionModel.fromJson(data);
   }
@@ -452,6 +546,15 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
     final response = await _get(_ApiEndpoints.transactionHistory);
     final data = _handleResponse(response) as List;
     return data.map((json) => TransactionModel.fromJson(json)).toList();
+  }
+
+  /// Cancel pending transaction
+  static Future<void> cancelTransaction(int transactionId) async {
+    final response = await _delete(_ApiEndpoints.cancelTransaction(transactionId));
+    // 204 No Content - just verify success
+    if (response.statusCode != 204) {
+      throw ApiException('Failed to cancel transaction: ${response.statusCode}');
+    }
   }
 
   // ===========================================================================
@@ -529,6 +632,34 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
       print('Payment service health check failed: $e');
       return false;
     }
+  }
+
+  // ===========================================================================
+  // App Configuration Endpoints
+  // ===========================================================================
+
+  /// Get app version information
+  static Future<Map<String, dynamic>> getAppVersion() async {
+    final response = await _get(_ApiEndpoints.appVersion, requireAuth: false);
+    return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  /// Get filters (games, teamSizes, maps, timeSlots)
+  static Future<Map<String, dynamic>> getFilters() async {
+    final response = await _get(_ApiEndpoints.filters, requireAuth: false);
+    return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  /// Get platform info
+  static Future<Map<String, dynamic>> getPlatformInfo() async {
+    final response = await _get(_ApiEndpoints.platformInfo, requireAuth: false);
+    return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  /// Get registration requirements
+  static Future<Map<String, dynamic>> getRegistrationRequirements() async {
+    final response = await _get(_ApiEndpoints.registrationRequirements, requireAuth: false);
+    return _handleResponse(response) as Map<String, dynamic>;
   }
 }
 

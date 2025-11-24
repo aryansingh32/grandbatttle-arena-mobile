@@ -4,6 +4,7 @@
 import 'package:carousel_slider/carousel_controller.dart' as ts;
 import 'package:carousel_slider/carousel_slider.dart' as cs;
 import 'package:flutter/material.dart';
+import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -135,10 +136,9 @@ class _BannerSliderState extends State<BannerSlider> {
 
   void _startAutoRefresh() {
     Future.delayed(const Duration(minutes: 5), () {
-      if (mounted) {
-        _loadBanners(silent: true);
-        _startAutoRefresh();
-      }
+      if (!mounted) return;
+      _loadBanners(silent: true);
+      _startAutoRefresh();
     });
   }
 
@@ -149,55 +149,23 @@ class _BannerSliderState extends State<BannerSlider> {
     }
 
     try {
-      // TODO: Replace with actual API call
-      // final banners = await ApiService.getActiveBanners();
-      
-      // TEMP: Mock data for demonstration
-      final banners = _getMockBanners();
-      
-      if (mounted) {
-        setState(() {
-          _banners = banners;
-          _isLoading = false;
-        });
-      }
+      final banners = await ApiService.getActiveBanners();
+      if (!mounted) return;
+      setState(() {
+        _banners = banners;
+        _isLoading = false;
+      });
     } catch (e) {
       print('Error loading banners: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load banners: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-  }
-
-  // STEP 4.6: Mock banners (remove when API is ready)
-  List<BannerModel> _getMockBanners() {
-    return [
-      BannerModel(
-        id: 1,
-        imageUrl: 'assets/images/freefirebanner4.webp',
-        title: 'Free Fire Tournament',
-        description: 'Win big prizes!',
-        type: 'image',
-        order: 1,
-      ),
-      BannerModel(
-        id: 2,
-        imageUrl: 'assets/images/freefirebanner.webp',
-        title: 'PUBG Championship',
-        description: 'Join now!',
-        actionUrl: 'https://youtube.com/watch?v=example',
-        type: 'video',
-        order: 2,
-      ),
-      BannerModel(
-        id: 3,
-        imageUrl: 'assets/images/freefirebanner4.webp',
-        title: 'Special Offer',
-        description: '50% off entry fees',
-        type: 'ad',
-        order: 3,
-      ),
-    ];
   }
 
   @override

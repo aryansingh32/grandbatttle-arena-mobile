@@ -47,10 +47,13 @@ dependencies:
   # For the YouTube video player in the popup
   youtube_player_flutter: ^9.1.2
   video_player: ^2.8.6
+  package_info_plus: ^8.0.0
 
   # For downloading and saving the QR image to the gallery
   permission_handler: ^12.0.1 # Handles gallery write permissions
   dio: ^5.9.0 # For downloading the image file
+  path_provider: ^2.1.1 # For getting file paths
+  gal: ^2.0.1 # For saving images to gallery (modern alternative to image_gallery_saver)
   
   # For showing loading/error messages nicely
   fluttertoast: ^8.2.12
@@ -72,6 +75,10 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  
+  # For generating app icons and splash screens
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.10
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -118,3 +125,62 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ===========================================================================
+# App Icon Configuration
+# ===========================================================================
+# INSTRUCTIONS:
+# 1. Place your app icon image (1024x1024 PNG) at: assets/icon/app_icon.png
+# 2. Run: flutter pub get
+# 3. Run: dart run flutter_launcher_icons
+# 
+# This will generate icons for all platforms (Android, iOS, etc.)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"  # Change this to your icon path
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  adaptive_icon_background: "#000000"  # Change to your brand color (e.g., "#FFD700" for gold)
+  adaptive_icon_foreground: "assets/icon/app_icon.png"  # Change to your icon path
+  # Remove the comment below if you want to use a different icon for notifications
+  # notification_icon: "assets/icon/notification_icon.png"
+
+# ===========================================================================
+# Splash Screen Configuration
+# ===========================================================================
+# INSTRUCTIONS:
+# 1. Place your splash screen image at: assets/splash/splash_logo.png (recommended: 512x512)
+# 2. Run: flutter pub get
+# 3. Run: dart run flutter_native_splash:create
+#
+# This will create a native splash screen for Android and iOS
+flutter_native_splash:
+  # This package generates native code to customize Flutter's default white native splash screen
+  # with background color and splash image.
+  # Customize the parameters below, and run the following command:
+  # dart run flutter_native_splash:create
+  # To restore Flutter's default white splash screen, run:
+  # dart run flutter_native_splash:remove
+
+  color: "#000000"  # Background color of splash screen (change to your brand color)
+  image: assets/splash/splash_logo.png  # Path to your splash logo (recommended: 512x512 PNG)
+  
+  # Android 12+ specific settings
+  android_12:
+    image: assets/splash/splash_logo.png
+    color: "#000000"  # Background color for Android 12+
+    icon_background_color: "#000000"  # Icon background color
+  
+  # iOS specific settings
+  ios: true
+  ios_content_mode: center  # Options: center, scaleAspectFit, scaleAspectFill
+  
+  # Android specific settings
+  android: true
+  android_gravity: center  # Options: center, top, bottom, left, right, topLeft, topRight, bottomLeft, bottomRight
+  
+  # Remove splash screen after app loads
+  # remove: false  # Set to true to remove splash screen after app loads
+  
+  # Full screen mode
+  fullscreen: true

@@ -8,12 +8,17 @@ import 'package:grand_battle_arena/services/notification_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // FIXED: Import for background handler
+import 'package:grand_battle_arena/firebase_messaging_background.dart'; // FIXED: Import background handler
 import 'package:grand_battle_arena/services/auth_wrapper.dart';
 import 'pages/profile.dart';
 // import 'pages/sign_in_page.dart';
 // import 'pages/sign_up_page.dart';
-// import 'pages/welcome_page.dart';
+import 'pages/welcome_page.dart';
 import 'services/auth_state_manager.dart';
+import 'services/booking_refresh_notifier.dart';
+import 'services/filter_provider.dart'; // CHANGE: expose shared filters for quick chips.
+import 'services/notification_service.dart' show NavigatorKey; // CHANGE: use app-wide navigator key.
 
 
 void main() async {
@@ -32,11 +37,21 @@ void main() async {
     ),
   );
 
+  // CRITICAL FIX: Register background message handler BEFORE initializing notification service
+  // This MUST be a top-level function and registered before runApp()
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  print('✅ Background message handler registered');
+
+  // Initialize notification service (includes FCM token registration)
   await NotificationService.initialize();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthStateManager(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthStateManager()),
+        ChangeNotifierProvider(create: (_) => FilterProvider()),
+        ChangeNotifierProvider(create: (_) => BookingRefreshNotifier()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -52,8 +67,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Esports App",
+      navigatorKey: NavigatorKey.key, // CHANGE: enable notification-driven navigation.
       // USE the home property and point it to your new wrapper
-      home: const AuthWrapper(signedInScreen: SignInPage(), signedOutScreen: SignUpPage()),
+      home:  const AuthWrapper(signedInScreen: MainContainer(), signedOutScreen: WelcomePage()),
       // Your routes are still needed for in-app navigation
       routes: {
         '/main': (context) => MainContainer(),
@@ -68,6 +84,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Rubik',
         scaffoldBackgroundColor: Appcolor.primary,
+        canvasColor: Appcolor.primary,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          },
+        ), // CHANGE: use dark-friendly transitions to remove white flash.
         appBarTheme: AppBarTheme(
           color: Appcolor.primary,
           iconTheme: IconThemeData(color: Appcolor.white),

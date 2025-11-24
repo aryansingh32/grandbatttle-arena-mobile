@@ -245,6 +245,7 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
     final hasValidCredentials = (_gameId?.isNotEmpty ?? false) || (_gamePassword?.isNotEmpty ?? false);
     final isTournamentLive = _timeRemaining == Duration.zero;
     final shouldShowTimer = widget.showTimer && _timeRemaining > Duration.zero;
+    final usesNetworkImage = Uri.tryParse(widget.imageUrl)?.hasScheme ?? false;
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -263,20 +264,35 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               child: Stack(
                 children: [
-                  Image.asset(
-                    widget.imageUrl,
-                    width: double.infinity,
-                    height: 108,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: double.infinity,
-                        height: 108,
-                        color: Appcolor.primary.withOpacity(0.3),
-                        child: Icon(Icons.image_not_supported, color: Appcolor.grey, size: 40),
-                      );
-                    },
-                  ),
+                  usesNetworkImage
+                      ? Image.network(
+                          widget.imageUrl,
+                          width: double.infinity,
+                          height: 108,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: double.infinity,
+                              height: 108,
+                              color: Appcolor.primary.withOpacity(0.3),
+                              child: const Icon(Icons.image_not_supported, color: Appcolor.grey, size: 40),
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          widget.imageUrl,
+                          width: double.infinity,
+                          height: 108,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: double.infinity,
+                              height: 108,
+                              color: Appcolor.primary.withOpacity(0.3),
+                              child: const Icon(Icons.image_not_supported, color: Appcolor.grey, size: 40),
+                            );
+                          },
+                        ),
                   // Show timer only when tournament hasn't started
                   if (shouldShowTimer)
                     Positioned(

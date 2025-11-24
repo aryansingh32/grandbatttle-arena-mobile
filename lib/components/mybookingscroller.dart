@@ -1,6 +1,7 @@
 // lib/widgets/my_bookings_scroller.dart
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
@@ -8,6 +9,9 @@ import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/items/mybookingcard.dart';
 import 'package:grand_battle_arena/items/participantbottomsheet.dart';
 import 'package:shimmer/shimmer.dart'; // Import the shimmer package
+import 'package:provider/provider.dart';
+import 'package:grand_battle_arena/services/booking_refresh_notifier.dart';
+import 'package:grand_battle_arena/components/tournamentdetails.dart';
 
 // **NEW**: A simple in-memory cache to store tournament details and speed up loading.
 class TournamentCache {
@@ -46,11 +50,37 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
   bool _isFetchingInitialList = true;
   bool _hasFinishedLoadingAllCards = false;
   String? _error;
+  bool _isSignedIn = false;
+  BookingRefreshNotifier? _refreshNotifier;
 
   @override
   void initState() {
     super.initState();
     _loadMyBookings();
+  }
+
+  @override
+  void didChangeDependencies() {
+  super.didChangeDependencies();
+
+  final notifier = Provider.of<BookingRefreshNotifier?>(context, listen: false);
+
+  if (_refreshNotifier == notifier) return;
+
+  _refreshNotifier?.removeListener(_handleExternalRefresh);
+  _refreshNotifier = notifier;
+  _refreshNotifier?.addListener(_handleExternalRefresh);
+}
+
+
+  void _handleExternalRefresh() {
+    _loadMyBookings();
+  }
+
+  @override
+  void dispose() {
+    _refreshNotifier?.removeListener(_handleExternalRefresh);
+    super.dispose();
   }
 
   Future<void> _loadMyBookings() async {
@@ -62,6 +92,21 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
     });
 
     try {
+      // CHANGE: Skip API spam when user is logged out so “My Tournaments” hides cleanly.
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _isSignedIn = false;
+            _isFetchingInitialList = false;
+            _hasFinishedLoadingAllCards = true;
+          });
+        }
+        return;
+      } else {
+        _isSignedIn = true;
+      }
+
       final allBookings = await ApiService.getMyBookings();
       final uniqueTournamentIds = allBookings.map((b) => b.tournamentId).toSet();
 
@@ -71,28 +116,26 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
         return;
       }
 
-      for (final id in uniqueTournamentIds) {
-        if (!mounted) return;
+      final bookingFutures = uniqueTournamentIds.map((id) async {
         try {
-          TournamentModel? tournament;
-          // **NEW**: Check the cache first
-          tournament = _cache.get(id);
-          
-          // If not in cache, fetch from API and add to cache
-          if (tournament == null) {
-            tournament = await ApiService.getTournamentDetails(id);
-            _cache.set(tournament);
-          }
-          
-          if (mounted) {
-            setState(() => _myBookings.add(tournament!));
-          }
+          TournamentModel? tournament = _cache.get(id);
+          tournament ??= await ApiService.getTournamentDetails(id);
+          _cache.set(tournament);
+          return tournament;
         } catch (e) {
           print('Could not load details for tournament $id: $e');
+          return null;
         }
+      }).toList();
+
+      final resolved = await Future.wait(bookingFutures);
+
+      if (mounted) {
+        setState(() {
+          _myBookings = resolved.whereType<TournamentModel>().toList();
+          _hasFinishedLoadingAllCards = true;
+        });
       }
-      
-      if (mounted) setState(() => _hasFinishedLoadingAllCards = true);
 
     } catch (e) {
       if (mounted) {
@@ -104,11 +147,35 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
     }
   }
 
+  bool get _shouldShowSection =>
+      _isFetchingInitialList || (_isSignedIn && _myBookings.isNotEmpty);
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 300,
-      child: _buildContent(),
+    if (!_shouldShowSection) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
+          child: Text(
+            "My Tournaments",
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              fontSize: 25,
+              letterSpacing: 0.5,
+              color: Appcolor.white,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 300,
+          child: _buildContent(),
+        ),
+      ],
     );
   }
 
@@ -158,7 +225,16 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
           width: 180,
           height: 300,
           showTimer: tournament.gameId == null || tournament.gamePassword == null,
-          onDetailsPressed: () => print("Navigate to details for tournament ID: ${tournament.id}"),
+          onDetailsPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TournamentDetailsPage(
+                  tournamentId: tournament.id,
+                ),
+              ),
+            );
+          },
           onViewParticipants: () => showParticipantsBottomSheet(context, tournament.id, tournament.title),
         );
       },

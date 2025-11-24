@@ -15,6 +15,7 @@ class RealTimeSlotManager extends ChangeNotifier {
   final Map<int, List<SlotsModel>> _slotsCache = {};
   final Map<int, DateTime> _lastUpdate = {};
   final Map<int, Timer> _pollTimers = {};
+  final Set<int> _activeSyncs = {};
   
   // Optimistic updates tracking
   final Map<int, Set<int>> _optimisticBookings = {}; // tournamentId -> slot numbers
@@ -31,6 +32,7 @@ class RealTimeSlotManager extends ChangeNotifier {
     }
 
     print('🔵 Starting REAL-TIME sync for tournament $tournamentId');
+    _activeSyncs.add(tournamentId);
     
     // Immediate first fetch
     _fetchSlotsNow(tournamentId);
@@ -45,14 +47,18 @@ class RealTimeSlotManager extends ChangeNotifier {
   void stopRealTimeSync(int tournamentId) {
     _pollTimers[tournamentId]?.cancel();
     _pollTimers.remove(tournamentId);
+    _activeSyncs.remove(tournamentId);
     _optimisticBookings.remove(tournamentId);
     print('🛑 Stopped sync for tournament $tournamentId');
   }
 
   /// Immediate slot fetch
-  Future<void> _fetchSlotsNow(int tournamentId) async {
+  Future<void> _fetchSlotsNow(int tournamentId, {bool force = false}) async {
+    if (!force && !_activeSyncs.contains(tournamentId)) return;
+
     try {
       final slots = await ApiService.getTournamentSlotSummary(tournamentId);
+      if (!force && !_activeSyncs.contains(tournamentId)) return;
       
       // Check if data actually changed
       if (_hasDataChanged(tournamentId, slots)) {
@@ -140,7 +146,7 @@ class RealTimeSlotManager extends ChangeNotifier {
   /// Force immediate refresh
   Future<void> forceRefreshNow(int tournamentId) async {
     print('🔄 FORCE REFRESH: Tournament $tournamentId');
-    await _fetchSlotsNow(tournamentId);
+    await _fetchSlotsNow(tournamentId, force: true);
   }
 
   /// Get cached slots

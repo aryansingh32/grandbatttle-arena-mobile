@@ -26,6 +26,7 @@ class _WalletState extends State<Wallet> {
   String? userPhotoURL; // ADDED: To store user's profile image URL.
   List<TransactionModel> transactions = [];
   bool _isTransactionsLoading = true;
+  bool get _isLoadingAny => _isBalanceLoading || _isTransactionsLoading;
 
   @override
   void initState() {
@@ -129,41 +130,7 @@ class _WalletState extends State<Wallet> {
                     SizedBox(height: 25),
 
                     // Balance Display
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset('assets/icons/dollar.png', height: 31),
-                        const SizedBox(width: 10),
-                        _isBalanceLoading
-                            ? Shimmer.fromColors(
-                                baseColor: Colors.grey[800]!,
-                                highlightColor: Colors.grey[600]!,
-                                child: Container(
-                                    width: 80, height: 20, color: Colors.grey),
-                              )
-                            : Text(
-                                currentBalance.toString().replaceAllMapped(
-                                      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                                      (Match m) => '${m[1]},',
-                                    ),
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 2,
-                                    color: Appcolor.secondary,
-                                    fontSize: 20),
-                              ),
-                        const SizedBox(width: 10),
-                        const Padding(
-                          padding: EdgeInsets.only(top: 5),
-                          child: Text("Coin",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w400,
-                                  fontSize: 10,
-                                  letterSpacing: 1,
-                                  color: Colors.white)),
-                        ),
-                      ],
-                    ),
+                    _buildBalanceHero(),
 
                     // Deposit and Withdraw Buttons
                     Padding(
@@ -226,6 +193,12 @@ class _WalletState extends State<Wallet> {
                       ),
                     ),
 
+                    if (_isTransactionsLoading || rewardTransactions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildEarningsScoreboard(),
+                      ),
+
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text("Transactions",
@@ -249,7 +222,7 @@ class _WalletState extends State<Wallet> {
                         height: 500 - 36,
                         width: double.infinity,
                         child: _isTransactionsLoading
-                            ? Center(child: CircularProgressIndicator(color: Appcolor.secondary))
+                            ? _buildTransactionShimmer()
                             : transactions.isEmpty
                                 ? Center(
                                     child: Text("No transactions yet",
@@ -286,6 +259,154 @@ class _WalletState extends State<Wallet> {
     );
   }
 
+  Widget _buildBalanceHero() {
+    if (_isBalanceLoading) {
+      return Shimmer.fromColors(
+        baseColor: Colors.grey[900]!,
+        highlightColor: Colors.grey[700]!,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset('assets/icons/dollar.png', height: 31),
+        const SizedBox(width: 10),
+        Text(
+          currentBalance.toString().replaceAllMapped(
+                RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                (Match m) => '${m[1]},',
+              ),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2,
+            color: Appcolor.secondary,
+            fontSize: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Padding(
+          padding: EdgeInsets.only(top: 5),
+          child: Text(
+            "Coin",
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              fontSize: 10,
+              letterSpacing: 1,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionShimmer() {
+    return ListView.separated(
+      itemCount: 4,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: Colors.grey[800]!,
+        highlightColor: Colors.grey[600]!,
+        child: Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<TransactionModel> get rewardTransactions =>
+      transactions.where((tx) => tx.type.toLowerCase() == 'reward').toList();
+
+  Widget _buildEarningsScoreboard() {
+    final rewards = rewardTransactions;
+    if (_isTransactionsLoading && rewards.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (rewards.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          'Play tournaments to unlock your earnings scorecard.',
+          style: TextStyle(color: Appcolor.grey, fontSize: 12),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Earnings Scoreboard",
+          style: TextStyle(
+            color: Appcolor.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...rewards.take(5).map(
+          (tx) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Appcolor.cardsColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.emoji_events, color: Appcolor.secondary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reward: ${tx.transactionUID}',
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        _formatDate(tx.date.toIso8601String()),
+                        style: const TextStyle(color: Appcolor.grey, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
+                    Image.asset('assets/icons/dollar.png', height: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '+${tx.amount}',
+                      style: const TextStyle(
+                        color: Appcolor.secondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
   // --- Widgets and Methods ---
 
   // REPLACED: The old `showDepositPopUp` is replaced with the new UI.

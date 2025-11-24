@@ -31,259 +31,421 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 20),
-        child: Dialog(
-          backgroundColor: Appcolor.cardsColor,
-          child: Container(
-            height: 571,
-            width: 349,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Header with close button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(width: 85,),
-                      Center(
-                        child: Text(
-                          "Withdraw",
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 650),
+        decoration: BoxDecoration(
+          color: Appcolor.cardsColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Appcolor.secondary.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Improved header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Appcolor.secondary.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet,
+                            color: Appcolor.secondary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          "Withdraw Funds",
                           style: TextStyle(
                             color: Appcolor.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w400
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 29,),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Appcolor.white),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  
-                  // Show current balance
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Color.fromRGBO(63, 62, 62, 1),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Available Balance: ",
-                          style: TextStyle(
-                            color: Appcolor.grey,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Image.asset('assets/icons/dollar.png', width: 16, height: 16),
-                        Text(
-                          widget.currentBalance.toString(),
-                          style: TextStyle(
-                            color: Appcolor.secondary,
-                            fontSize: 16,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  
-                  SizedBox(height: 16),
-                  
-                  // Amount input field with dollar prefix
-                  Container(
-                    width: 179,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Color.fromRGBO(63, 62, 62, 1),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Appcolor.grey),
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Appcolor.primary.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
-                    child: TextField(
-                      controller: _withdrawAmountController,
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        prefixIcon: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Image.asset(
-                            'assets/icons/dollar.png',
-                            width: 16,
-                            height: 16,
+                  ],
+                ),
+                const SizedBox(height: 24),
+                
+                // Improved balance display
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Appcolor.secondary.withOpacity(0.2),
+                        Appcolor.secondary.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Appcolor.secondary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Available Balance",
+                            style: TextStyle(
+                              color: Appcolor.grey,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        hintText: "Enter The Amount",
-                        filled: true,
-                        fillColor: Color.fromRGBO(63, 62, 62, 1),
-                        hintStyle: TextStyle(
-                          color: Appcolor.grey,
-                          fontSize: 10
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Image.asset(
+                                'assets/icons/dollar.png',
+                                width: 20,
+                                height: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.currentBalance.toString(),
+                                style: const TextStyle(
+                                  color: Appcolor.secondary,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      style: TextStyle(
-                        color: Appcolor.secondary,
-                      ),
-                    ),
-                  ),
-                  
-                  // Price chips for withdrawal
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildWithdrawPriceChips(100),
-                          _buildWithdrawPriceChips(500),
-                          _buildWithdrawPriceChips(1000),
-                          _buildWithdrawPriceChips(2000),
-                          _buildWithdrawPriceChips(5000),
-                        ]
-                      ),
-                    ),
-                  ),
-                  
-                  // Withdrawal method section
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 16, top: 5, bottom: 7),
-                      child: Text(
-                        "Withdrawal Method",
-                        style: TextStyle(
-                          color: Appcolor.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w400
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Appcolor.secondary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                    ),
-                  ),
-                  
-                  // UPI Mode
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 16, bottom: 2,),
-                      child: Text(
-                        "UPI Mode",
-                        style: TextStyle(
+                        child: const Icon(
+                          Icons.account_balance_wallet_outlined,
                           color: Appcolor.secondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400
+                          size: 32,
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Amount section with improved UI
+                const Text(
+                  "Withdrawal Amount",
+                  style: TextStyle(
+                    color: Appcolor.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Appcolor.secondary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _withdrawAmountController,
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(
+                      color: Appcolor.secondary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Image.asset(
+                          'assets/icons/dollar.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                      ),
+                      hintText: "Enter Amount",
+                      hintStyle: TextStyle(
+                        color: Appcolor.grey.withOpacity(0.5),
+                        fontSize: 18,
+                      ),
+                      filled: true,
+                      fillColor: Appcolor.primary.withOpacity(0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Appcolor.secondary.withOpacity(0.3),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Appcolor.secondary,
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 20,
                       ),
                     ),
                   ),
-                  
-                  // UPI section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      padding: EdgeInsets.all(8),
-                      height: 100,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Color.fromRGBO(63, 62, 62, 1),
-                        borderRadius: BorderRadius.circular(20)
-                      ),
-                      child: Column(
+                ),
+                
+                // Improved price chips
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildWithdrawPriceChips(100),
+                      _buildWithdrawPriceChips(500),
+                      _buildWithdrawPriceChips(1000),
+                      _buildWithdrawPriceChips(2000),
+                      _buildWithdrawPriceChips(5000),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Improved UPI section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Appcolor.primary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Appcolor.secondary.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          SizedBox(height: 5),
-                          Text(
-                            "Enter Your UPI Id:",
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Appcolor.secondary.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.account_balance_wallet,
+                              color: Appcolor.secondary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            "UPI Payment Method",
                             style: TextStyle(
                               color: Appcolor.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w400
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          // UPI ID input
-                          TextField(
-                            controller: _withdrawUpiController,
-                            decoration: InputDecoration(
-                              hintText: "UPI Id",
-                              filled: true,
-                              fillColor: Color.fromRGBO(63, 62, 62, 1),
-                              hintStyle: TextStyle(
-                                color: Appcolor.grey,
-                                fontSize: 13
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Appcolor.grey.withOpacity(0.3)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Appcolor.secondary, width: 1),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Appcolor.grey.withOpacity(0.3)),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            style: TextStyle(
-                              color: Appcolor.secondary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  
-                  SizedBox(height: 30),
-                  
-                  // Withdraw button with loading state
-                  InkWell(
-                    borderRadius: BorderRadius.circular(15),
-                    onTap: _isProcessing ? null : () => _handleWithdrawal(),
-                    child: Container(
-                      width: 108,
-                      height: 43,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        color: _isProcessing 
-                          ? Appcolor.secondary.withOpacity(0.5)
-                          : Appcolor.secondary,
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _withdrawUpiController,
+                        keyboardType: TextInputType.emailAddress,
+                        style: const TextStyle(
+                          color: Appcolor.white,
+                          fontSize: 16,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "Enter your UPI ID (e.g., yourname@paytm)",
+                          hintStyle: TextStyle(
+                            color: Appcolor.grey.withOpacity(0.7),
+                            fontSize: 14,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.payment,
+                            color: Appcolor.secondary,
+                          ),
+                          filled: true,
+                          fillColor: Appcolor.cardsColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Appcolor.secondary.withOpacity(0.3),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Appcolor.secondary.withOpacity(0.3),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Appcolor.secondary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
                       ),
-                      child: Center(
-                        child: _isProcessing
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                color: Appcolor.primary,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              "Withdraw",
-                              style: TextStyle(
-                                letterSpacing: 1,
-                                color: Appcolor.primary,
-                                fontWeight: FontWeight.bold,
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Appcolor.secondary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              color: Appcolor.secondary,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Funds will be transferred to this UPI ID",
+                                style: TextStyle(
+                                  color: Appcolor.grey,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Improved withdraw button
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing ? null : _handleWithdrawal,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isProcessing
+                          ? Appcolor.secondary.withOpacity(0.5)
+                          : Appcolor.secondary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      shadowColor: Appcolor.secondary.withOpacity(0.3),
+                    ),
+                    child: _isProcessing
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Appcolor.primary,
+                              strokeWidth: 3,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.send_rounded,
+                                color: Appcolor.primary,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                "Withdraw Funds",
+                                style: TextStyle(
+                                  color: Appcolor.primary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Info text
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Appcolor.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Appcolor.secondary.withOpacity(0.3),
                     ),
                   ),
-                ],
-              ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        color: Appcolor.secondary,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Withdrawal requests are processed within 24-48 hours",
+                          style: TextStyle(
+                            color: Appcolor.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -295,6 +457,7 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
     setState(() {
       _withdrawAmountController.text = amount.toString();
     });
+    // Trigger rebuild to update chip selection state
   }
 
   Future<void> _handleWithdrawal() async {
@@ -338,8 +501,8 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
     setState(() => _isProcessing = true);
 
     try {
-      // Call API to create withdrawal request //TODO add , upiId field
-      await ApiService.createWithdrawalRequest(withdrawAmount);
+      // FIXED: Send exact UPI ID to backend as transactionUID
+      await ApiService.createWithdrawalRequest(withdrawAmount, upiId: upiId.trim());
       
       Navigator.of(context).pop();
       
@@ -374,27 +537,46 @@ class _WithdrawalDialogState extends State<WithdrawalDialog> {
     );
   }
 
-  Widget _buildWithdrawPriceChips(int amount){
+  Widget _buildWithdrawPriceChips(int amount) {
+    final isSelected = _withdrawAmountController.text == amount.toString();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
         onTap: () => _onWithdrawChipTap(amount),
-        child: Container(
-          height: 24,
-          width: 70,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: Color.fromRGBO(63, 62, 62, 1),
-            border: Border.all(color: Appcolor.grey.withOpacity(0.3)),
-          ),
-          child: Center(
-            child: Text(
-              "$amount",
-              style: TextStyle(
-                color: Appcolor.secondary,
-                fontSize: 12,
-              ),
+            borderRadius: BorderRadius.circular(20),
+            color: isSelected
+                ? Appcolor.secondary
+                : Appcolor.primary.withOpacity(0.5),
+            border: Border.all(
+              color: isSelected
+                  ? Appcolor.secondary
+                  : Appcolor.secondary.withOpacity(0.3),
+              width: isSelected ? 2 : 1,
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/icons/dollar.png',
+                width: 14,
+                height: 14,
+                color: isSelected ? Appcolor.primary : Appcolor.secondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "$amount",
+                style: TextStyle(
+                  color: isSelected ? Appcolor.primary : Appcolor.secondary,
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),
