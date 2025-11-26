@@ -11,6 +11,7 @@ import 'package:grand_battle_arena/models/notification_model.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/services/firebase_auth_service.dart'; // FIXED: Import for ID token
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/utils/toast_utils.dart';
 
 class NotificationService {
   static final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -176,11 +177,19 @@ class NotificationService {
 
     // Create notification channels
     await _createNotificationChannels();
+    
+    // Request permissions for Android 13+ explicitly
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.requestNotificationsPermission();
+    }
+    
     print('✅ Local notifications initialized');
   }
 
   /// Create Android notification channels
-  /// CRITICAL: Channel ID must match backend - "tournament_channel"
+  /// CRITICAL: Channel ID must match backend - "tournament_channel_v2"
   static Future<void> _createNotificationChannels() async {
     final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -189,12 +198,13 @@ class NotificationService {
 
     // CRITICAL FIX: Main tournament channel - MUST match backend channel ID
     // Backend uses "tournament_channel" for all tournament notifications
+    // We use v2 to ensure high importance for existing users
     await androidPlugin.createNotificationChannel(
       const AndroidNotificationChannel(
-        'tournament_channel', // FIXED: Changed from 'tournament_credentials' to match backend
+        'tournament_channel_v2', // FIXED: Changed to v2 to force update settings
         'Tournament Notifications',
         description: 'Notifications for tournaments, wallet updates, and more',
-        importance: Importance.high,
+        importance: Importance.max, // FIXED: Max importance for heads-up
         playSound: true,
         enableVibration: true,
         showBadge: true,
@@ -224,7 +234,7 @@ class NotificationService {
       ),
     );
 
-    print('✅ Notification channels created (tournament_channel, general_notifications, wallet_notifications)');
+    print('✅ Notification channels created (tournament_channel_v2, general_notifications, wallet_notifications)');
   }
 
   /// STEP 3.8: Set up message handlers
@@ -336,7 +346,7 @@ class NotificationService {
       case 'tournament_result':
       case 'tournament_update':
       case 'TOURNAMENT': // Backend may send uppercase
-        return 'tournament_channel'; // FIXED: Changed to match backend
+        return 'tournament_channel_v2'; // FIXED: Changed to match backend v2
       case 'wallet_transaction':
       case 'reward_distribution':
       case 'WALLET': // Backend may send uppercase
@@ -348,7 +358,8 @@ class NotificationService {
 
   static String _getChannelNameForId(String channelId) {
     switch (channelId) {
-      case 'tournament_channel': // FIXED: Updated to match new channel ID
+      case 'tournament_channel_v2': // FIXED: Updated to match new channel ID
+      case 'tournament_channel': // Keep for backward compatibility
       case 'tournament_credentials': // Keep for backward compatibility
         return 'Tournament Notifications';
       case 'wallet_notifications':
@@ -360,7 +371,8 @@ class NotificationService {
 
   static String _getChannelDescriptionForId(String channelId) {
     switch (channelId) {
-      case 'tournament_channel': // FIXED: Updated to match new channel ID
+      case 'tournament_channel_v2': // FIXED: Updated to match new channel ID
+      case 'tournament_channel': // Keep for backward compatibility
       case 'tournament_credentials': // Keep for backward compatibility
         return 'Notifications for tournaments, wallet updates, and more';
       case 'wallet_notifications':
@@ -596,51 +608,20 @@ class NotificationService {
 
   static void _copyToClipboard(String text, String type, BuildContext context) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text('$type copied!'),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Appcolor.secondary,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastUtils.showPremiumToast(context, '$type copied!');
   }
 
   static void _copyBothCredentials(String gameId, String gamePassword, BuildContext context) {
     final credentials = 'Game ID: $gameId\nPassword: $gamePassword';
     Clipboard.setData(ClipboardData(text: credentials));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            const Text('All credentials copied!'),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Appcolor.secondary,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    ToastUtils.showPremiumToast(context, 'All credentials copied!');
   }
 
   static void _copyInline(String value, String label, BuildContext? context) {
     if (value.isEmpty) return;
     Clipboard.setData(ClipboardData(text: value));
     if (context != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$label copied'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ToastUtils.showPremiumToast(context, '$label copied');
     }
   }
 

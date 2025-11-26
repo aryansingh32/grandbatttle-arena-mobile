@@ -24,10 +24,10 @@
         android:icon="@mipmap/ic_launcher">
         
         <!-- CRITICAL: Firebase Messaging default notification channel -->
-        <!-- This MUST match the channel ID used in Flutter code: "tournament_channel" -->
+        <!-- This MUST match the channel ID used in Flutter code: "tournament_channel_v2" -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="tournament_channel" />
+            android:value="tournament_channel_v2" />
         
         <!-- Firebase Messaging default notification icon -->
         <meta-data

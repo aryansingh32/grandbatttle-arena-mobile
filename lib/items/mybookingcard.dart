@@ -4,6 +4,7 @@ import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'package:grand_battle_arena/utils/toast_utils.dart';
 
 class TournamentBookingCard extends StatefulWidget {
   final String title;
@@ -14,6 +15,7 @@ class TournamentBookingCard extends StatefulWidget {
   final bool showTimer;
   final VoidCallback? onDetailsPressed;
   final VoidCallback? onViewParticipants;
+  final VoidCallback? onUploadResult;
   final double? width;
   final double? height;
 
@@ -27,6 +29,7 @@ class TournamentBookingCard extends StatefulWidget {
     this.showTimer = true,
     this.onDetailsPressed,
     this.onViewParticipants,
+    this.onUploadResult,
     this.width = 191,
     this.height = 300,
   });
@@ -167,13 +170,7 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
 
   void _copyToClipboard(String text, String type) {
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$type copied successfully!'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.green,
-      ),
-    );
+    ToastUtils.showPremiumToast(context, '$type copied successfully!');
   }
 
   Widget _buildTimerWidget() {
@@ -419,6 +416,29 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
                               ),
                             ),
                           ),
+                        if (widget.onUploadResult != null) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: widget.onUploadResult,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                "Upload", 
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                )
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

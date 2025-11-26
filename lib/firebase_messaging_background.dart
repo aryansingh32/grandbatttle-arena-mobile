@@ -19,10 +19,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Show local notification for background messages
   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-    'tournament_channel', // CRITICAL: Must match backend channel ID
+    'tournament_channel_v2', // CRITICAL: Must match backend channel ID
     'Tournament Notifications',
     channelDescription: 'Notifications for tournaments, wallet updates, and more',
-    importance: Importance.high,
+    importance: Importance.max, // High importance for heads-up
     priority: Priority.high,
     showWhen: true,
     playSound: true,

@@ -63,6 +63,8 @@ dependencies:
   url_launcher: ^6.3.2
   cached_network_image: ^3.4.1
   carousel_slider: ^5.1.1
+  share_plus: ^10.0.0
+  palette_generator: ^0.3.3
  
 
 dev_dependencies:

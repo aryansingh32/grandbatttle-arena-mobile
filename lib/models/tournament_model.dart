@@ -25,6 +25,7 @@ class TournamentModel {
   final int? firstPrize;
   final int? secondPrize;
   final int? thirdPrize;
+  final String? streamUrl;
 
   TournamentModel({
     required this.id,
@@ -48,6 +49,7 @@ class TournamentModel {
     this.firstPrize,
     this.secondPrize,
     this.thirdPrize,
+    this.streamUrl,
   });
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
@@ -80,6 +82,7 @@ class TournamentModel {
       firstPrize: json['firstPrize'] as int?,
       secondPrize: json['secondPrize'] as int?,
       thirdPrize: json['thirdPrize'] as int?,
+      streamUrl: json['streamUrl'] as String?,
     );
   }
 
@@ -206,6 +209,56 @@ class TournamentModel {
   int get firstPlacePrize => firstPrize ?? (prizePool ~/ 2);
   int get secondPlacePrize => secondPrize ?? (prizePool ~/ 3);
   int get thirdPlacePrize => thirdPrize ?? (prizePool ~/ 5);
+
+  TournamentModel copyWith({
+    int? id,
+    String? title,
+    int? prizePool,
+    int? entryFee,
+    String? imageUrl,
+    String? map,
+    String? game,
+    int? maxPlayers,
+    DateTime? startTime,
+    String? teamSize,
+    String? status,
+    String? gameId,
+    String? gamePassword,
+    List<String>? rules,
+    int? registeredPlayers,
+    List<ParticipantModel>? participants,
+    List<ScoreEntry>? scoreboard,
+    int? perKillReward,
+    int? firstPrize,
+    int? secondPrize,
+    int? thirdPrize,
+    String? streamUrl,
+  }) {
+    return TournamentModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      prizePool: prizePool ?? this.prizePool,
+      entryFee: entryFee ?? this.entryFee,
+      imageUrl: imageUrl ?? this.imageUrl,
+      map: map ?? this.map,
+      game: game ?? this.game,
+      maxPlayers: maxPlayers ?? this.maxPlayers,
+      startTime: startTime ?? this.startTime,
+      teamSize: teamSize ?? this.teamSize,
+      status: status ?? this.status,
+      gameId: gameId ?? this.gameId,
+      gamePassword: gamePassword ?? this.gamePassword,
+      rules: rules ?? this.rules,
+      registeredPlayers: registeredPlayers ?? this.registeredPlayers,
+      participants: participants ?? this.participants,
+      scoreboard: scoreboard ?? this.scoreboard,
+      perKillReward: perKillReward ?? this.perKillReward,
+      firstPrize: firstPrize ?? this.firstPrize,
+      secondPrize: secondPrize ?? this.secondPrize,
+      thirdPrize: thirdPrize ?? this.thirdPrize,
+      streamUrl: streamUrl ?? this.streamUrl,
+    );
+  }
 
   @override
   String toString() {

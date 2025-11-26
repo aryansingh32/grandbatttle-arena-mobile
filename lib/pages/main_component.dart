@@ -43,32 +43,16 @@ class _MainContainerState extends State<MainContainer> {
 
   @override
   Widget build(BuildContext context) {
-    print('MainContainer build called - currentIndex: $_currentIndex'); // Debug log
+    // print('MainContainer build called - currentIndex: $_currentIndex'); // Debug log
     
     return Scaffold(
       backgroundColor: const Color.fromRGBO(9, 11, 14, 1),
       body: Stack(
         children: [
-          // Add a simple debug container to ensure something is visible
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: const Color.fromRGBO(9, 11, 14, 1),
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                print('Page changed to: $index'); // Debug log
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _pages.length,
-              itemBuilder: (context, index) {
-                print('Building page at index: $index'); // Debug log
-                return _pages[index];
-              },
-            ),
+          // Using IndexedStack to keep pages alive and prevent rebuilding
+          IndexedStack(
+            index: _currentIndex,
+            children: _pages,
           ),
           Positioned(
             bottom: 0,
@@ -85,10 +69,8 @@ class _MainContainerState extends State<MainContainer> {
   }
 
   void _onPageChanged(int index) {
-    print('NavigatorBar triggered page change to: $index'); // Debug log
     setState(() {
       _currentIndex = index;
     });
-    _pageController.jumpToPage(index);
   }
 }

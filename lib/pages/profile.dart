@@ -11,6 +11,7 @@ import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:grand_battle_arena/pages/support_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Profile extends StatefulWidget {
@@ -677,6 +678,17 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
           subtitle: "View your coin transactions",
           onTap: () {
             Navigator.pushNamed(context, '/wallet');
+          },
+        ),
+        _ActionTile(
+          icon: Icons.help_outline,
+          title: "Help & Support",
+          subtitle: "FAQ and Contact Us",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SupportPage()),
+            );
           },
         ),
         _ActionTile(

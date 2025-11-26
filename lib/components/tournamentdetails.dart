@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/components/registertournament.dart';
@@ -7,6 +8,10 @@ import 'package:grand_battle_arena/theme/appcolor.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
 import 'package:grand_battle_arena/services/booking_refresh_notifier.dart';
+import 'package:grand_battle_arena/utils/toast_utils.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 class TournamentDetailsPage extends StatefulWidget {
   final int tournamentId;
@@ -29,12 +34,56 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   String? _currentUserUid;
   bool _userHasBooking = false;
   List<ParticipantModel> _userParticipants = [];
+  
+  // Dynamic Background State
+  List<Color> _bgColors = [Appcolor.primary, Colors.black];
+  int _colorIndex = 0;
+  Timer? _animationTimer;
 
   @override
   void initState() {
     super.initState();
     _currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     _loadTournamentDetails();
+    _startBackgroundAnimation();
+  }
+
+  void _startBackgroundAnimation() {
+    _animationTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted) {
+        setState(() {
+          _colorIndex = (_colorIndex + 1) % 2;
+        });
+      }
+    });
+  }
+
+  Future<void> _updatePalette() async {
+    if (tournament?.imageUrl == null) return;
+    try {
+      final PaletteGenerator generator = await PaletteGenerator.fromImageProvider(
+        NetworkImage(tournament!.imageUrl!),
+        size: const Size(200, 100), // Resize for speed
+      );
+      
+      if (mounted) {
+        setState(() {
+          final darkMuted = generator.darkMutedColor?.color ?? Appcolor.primary;
+          final darkVibrant = generator.darkVibrantColor?.color ?? Colors.black;
+          final dominant = generator.dominantColor?.color ?? Appcolor.cardsColor;
+          
+          // Create a rich, dark gradient palette
+          _bgColors = [
+            darkMuted.withOpacity(0.8),
+            darkVibrant.withOpacity(0.6),
+            dominant.withOpacity(0.4),
+            Colors.black
+          ];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error generating palette: $e");
+    }
   }
 
   void _evaluateUserBooking(TournamentModel data) {
@@ -53,6 +102,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
         isLoading = true;
         error = null;
       });
+      
 
       // FIX: Use authenticated endpoint to get rules, participants, and scoreboard
       // The public endpoint (/api/public/tournaments/{id}) doesn't include these fields
@@ -60,9 +110,16 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       final tournamentData = await ApiService.getTournamentDetails(widget.tournamentId);
       
       setState(() {
-        tournament = tournamentData;
+        // Temporary test for Spectator Mode
+        tournament = tournamentData.copyWith(streamUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+        // tournament = tournamentData; // Uncomment this and remove above line for production
+        
         isLoading = false;
       });
+      
+      // Trigger palette update after data load
+      _updatePalette();
+      
       _evaluateUserBooking(tournamentData);
     } catch (e) {
       setState(() {
@@ -81,16 +138,198 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     }
   }
 
+  YoutubePlayerController? _youtubeController;
+
+  @override
+  void dispose() {
+    _animationTimer?.cancel();
+    _youtubeController?.dispose();
+    super.dispose();
+  }
+
+  void _initializeYoutubePlayer(String url) {
+    final videoId = YoutubePlayer.convertUrlToId(url);
+    if (videoId != null) {
+      _youtubeController = YoutubePlayerController(
+        initialVideoId: videoId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: false,
+          mute: false,
+          enableCaption: false,
+        ),
+      );
+    }
+  }
+
+  Widget _buildYoutubePlayer() {
+    if (_youtubeController == null && tournament?.streamUrl != null) {
+      _initializeYoutubePlayer(tournament!.streamUrl!);
+    }
+
+    if (_youtubeController == null) return _buildHeaderImage();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.black,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: YoutubePlayer(
+          controller: _youtubeController!,
+          showVideoProgressIndicator: true,
+          progressIndicatorColor: Appcolor.secondary,
+          progressColors: const ProgressBarColors(
+            playedColor: Appcolor.secondary,
+            handleColor: Appcolor.secondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection(BuildContext context) {
+    return Container(
+      height: 250,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          // Background gaming character image OR YouTube Player
+          Positioned.fill(
+            child: (tournament?.streamUrl != null && tournament!.streamUrl!.isNotEmpty)
+                ? _buildYoutubePlayer()
+                : _buildHeaderImage(),
+          ),
+          // Back button
+          Positioned(
+            top: 40,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4), // Glass effect
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: const Icon(
+                  Icons.arrow_back,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          // Share button
+          Positioned(
+            top: 40,
+            right: 16,
+            child: GestureDetector(
+              onTap: () {
+                if (tournament != null) {
+                  Share.share(
+                    'Join me in the ${tournament!.title} tournament on Grand Battle Arena! 🎮\n\nPrize Pool: ${tournament!.prizePool}\nEntry: ${tournament!.entryFee}\n\nRegister now: https://grandbattlearena.com/tournament/${tournament!.id}',
+                  );
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4), // Glass effect
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: const Icon(
+                  Icons.share,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+          // Game name text overlay (Only show if NOT playing video)
+          if (tournament?.streamUrl == null || tournament!.streamUrl!.isEmpty)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Text(
+                  tournament!.game.toUpperCase(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                    shadows: [
+                      Shadow(
+                        color: const Color.fromARGB(214, 0, 0, 0),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderImage() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        image: DecorationImage(
+          image: tournament!.imageUrl != null 
+            ? NetworkImage(tournament!.imageUrl!)
+            : const AssetImage("assets/images/freefirebanner4.webp") as ImageProvider,
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              Colors.black87,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       bottomNavigationBar: bottomNavigationBar,
       backgroundColor: Appcolor.primary,
-      body: isLoading 
-        ? _buildLoadingState()
-        : error != null 
-          ? _buildErrorState()
-          : _buildContent(),
+      body: AnimatedContainer(
+        duration: const Duration(seconds: 4),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: _colorIndex == 0 ? Alignment.topLeft : Alignment.bottomRight,
+            end: _colorIndex == 0 ? Alignment.bottomRight : Alignment.topLeft,
+            colors: _bgColors.length >= 2 
+                ? [_bgColors[0], _bgColors[1]] 
+                : [Appcolor.primary, Colors.black],
+          ),
+        ),
+        child: isLoading 
+          ? _buildLoadingState()
+          : error != null 
+            ? _buildErrorState()
+            : _buildContent(),
+      ),
     );
   }
 
@@ -130,97 +369,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
     return Column(
       children: [
         // Header with back button and tournament image
-        Container(
-          height: 400,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.fromARGB(255, 46, 26, 43),
-                Color.fromARGB(255, 62, 22, 22),
-                Appcolor.primary,
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              // Background gaming character image
-              Positioned.fill(
-                child: Container(
-                  margin: const EdgeInsets.fromLTRB(20, 40, 20, 20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    image: DecorationImage(
-                      image: tournament!.imageUrl != null 
-                        ? NetworkImage(tournament!.imageUrl!)
-                        : const AssetImage("assets/images/freefirebanner4.webp") as ImageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black87,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              // Back button
-              Positioned(
-                top: 40,
-                left: 16,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Appcolor.primary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-              // Game name text overlay
-              Positioned(
-                bottom: 40,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Text(
-                    tournament!.game.toUpperCase(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 3,
-                      shadows: [
-                        Shadow(
-                          color: const Color.fromARGB(214, 0, 0, 0),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildHeaderSection(context),
 
         // Tournament details section
         Expanded(
@@ -711,9 +860,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               ? null
               : () {
                   Clipboard.setData(ClipboardData(text: value));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('$label copied')),
-                  );
+                  ToastUtils.showPremiumToast(context, '$label copied');
                 },
           icon: const Icon(Icons.copy, color: Appcolor.secondary, size: 18),
         ),

@@ -241,6 +241,8 @@ class _MyBookingsScrollerState extends State<MyBookingsScroller> {
     );
   }
 
+
+
   /// **NEW**: A placeholder card with a shimmer effect.
   Widget _buildShimmerCard() {
     return Padding(

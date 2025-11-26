@@ -6,6 +6,7 @@ import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
 import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/services/filter_provider.dart'; // CHANGE: share filters with home quick chips.
+import 'package:shimmer/shimmer.dart';
 
 // Tournament data model
 class Tournament {
@@ -235,18 +236,22 @@ class _TournamentContentState extends State<TournamentContent> {
     if (_isApiLoading) {
       return ListView.builder(
         itemCount: 3,
-        itemBuilder: (context, index) => TournamentCard(
-          imageUrl: "",
-          title: "",
-          dateTime: "",
-          prize: "",
-          entry: "",
-          teamSize: "",
-          enrolled: "",
-          map: "",
-          game: "",
-          onRegister: () {},
-          isLoading: true,
+        itemBuilder: (context, index) => Shimmer.fromColors(
+          baseColor: Colors.grey[800]!,
+          highlightColor: Colors.grey[700]!,
+          child: TournamentCard(
+            imageUrl: "",
+            title: "",
+            dateTime: "",
+            prize: "",
+            entry: "",
+            teamSize: "",
+            enrolled: "",
+            map: "",
+            game: "",
+            onRegister: () {},
+            isLoading: true,
+          ),
         ),
       );
     }
@@ -290,43 +295,49 @@ class _TournamentContentState extends State<TournamentContent> {
 
     // Inside _buildTournamentList method in tournament.dart
 
-    return ListView.builder(
-      itemCount: tournaments.length,
-      itemBuilder: (context, index) {
-        TournamentModel tournament = tournaments[index];
-        return TournamentCard(
-          imageUrl: tournament.imageUrl ?? 'assets/images/freefirebanner4.webp',
-          title: tournament.title,
-          dateTime: tournament.dateTimeFormatted,
-          prize: tournament.prizePool.toString(),
-          entry: tournament.entryFee.toString(),
-          teamSize: tournament.teamSize,
-          enrolled: "${tournament.registeredPlayers}/${tournament.maxPlayers}",
-          map: tournament.map ?? "TBD",
-          game: tournament.game,
-          isDivider: true,
-          onRegister: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TournamentDetailsPage(
-                  tournamentId: tournament.id,
+    return RefreshIndicator(
+      onRefresh: _loadTournaments,
+      color: Appcolor.secondary,
+      backgroundColor: Appcolor.primary,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: tournaments.length,
+        itemBuilder: (context, index) {
+          TournamentModel tournament = tournaments[index];
+          return TournamentCard(
+            imageUrl: tournament.imageUrl ?? 'assets/images/freefirebanner4.webp',
+            title: tournament.title,
+            dateTime: tournament.dateTimeFormatted,
+            prize: tournament.prizePool.toString(),
+            entry: tournament.entryFee.toString(),
+            teamSize: tournament.teamSize,
+            enrolled: "${tournament.registeredPlayers}/${tournament.maxPlayers}",
+            map: tournament.map ?? "TBD",
+            game: tournament.game,
+            isDivider: true,
+            onRegister: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TournamentDetailsPage(
+                    tournamentId: tournament.id,
+                  ),
                 ),
-              ),
-            );
-          },
-          onViewDetails: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TournamentDetailsPage(
-                  tournamentId: tournament.id,
+              );
+            },
+            onViewDetails: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TournamentDetailsPage(
+                    tournamentId: tournament.id,
+                  ),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
   
