@@ -7,6 +7,9 @@ import 'package:grand_battle_arena/components/home_quick_filters.dart';
 // import 'package:grand_battle_arena/components/navigatorbar.dart';
 import 'package:grand_battle_arena/components/tournamentcards.dart';
 import 'package:grand_battle_arena/components/topbar.dart';
+import 'package:grand_battle_arena/components/home_filter_grid.dart';
+import 'package:grand_battle_arena/theme/theme_manager.dart';
+import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
 
 class Home extends StatefulWidget {
@@ -18,6 +21,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int currentIndex = 0;
+  Key _tournamentListKey = UniqueKey();
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +35,13 @@ class _HomeState extends State<Home> {
               onRefresh: () async {
                 // Trigger a rebuild of children to reload data
                 setState(() {
-                  // This will cause unique keys to be regenerated if we used them,
-                  // or we can just await a delay if we had a provider.
-                  // For now, we'll simulate a refresh which gives the user feedback.
-                  // Ideally, move data fetching to a Provider.
+                  _tournamentListKey = UniqueKey();
                 });
-                await Future.delayed(const Duration(seconds: 1));
+                await Future.delayed(const Duration(milliseconds: 500));
               },
               color: Appcolor.secondary,
-              backgroundColor: Appcolor.primary,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              strokeWidth: 3,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
@@ -51,6 +53,12 @@ class _HomeState extends State<Home> {
                       BannerSlider(),
                       Homegames(), // Games 
                       const HomeQuickFilters(), // CHANGE: add stylish quick filters bar.
+                      Consumer<ThemeManager>(
+                        builder: (context, themeManager, _) {
+                          if (!themeManager.showFilterGrid) return const SizedBox.shrink();
+                          return const HomeFilterGrid();
+                        },
+                      ),
                       Padding( 
                         padding: const EdgeInsets.all(10.0),
                         child: Center(
@@ -69,7 +77,7 @@ class _HomeState extends State<Home> {
                       // but for now let's rely on the child's own refresh mechanism or
                       // just let the user pull to feel the app is "alive".
                       // To truly refresh, we'd need to lift state up.
-                      TournamentCards(),
+                      TournamentCards(key: _tournamentListKey),
                       HomeLeaderBoard(),
                     ],
                   ),

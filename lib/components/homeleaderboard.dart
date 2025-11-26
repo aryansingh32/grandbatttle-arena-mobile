@@ -16,14 +16,14 @@ class HomeLeaderBoard extends StatelessWidget {
         children: [
           Padding(
                 padding: const EdgeInsets.only(left: 8, top: 16, bottom: 8),
-                child: const Text(
+                child: Text(
                   "Leader Board",
                   style: TextStyle(
                     
                     fontWeight: FontWeight.w400,
                     fontSize: 25,
                     letterSpacing: 0.5,
-                    color: Appcolor.white,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
                   ),
                 ),
               ),
@@ -34,14 +34,14 @@ class HomeLeaderBoard extends StatelessWidget {
               // LeaderBoardProfile(),
               SizedBox(height: 30,),
               Center(
-                child: const Text(
+                child: Text(
                   "Coming Soon....",
                   style: TextStyle(
                     
                     fontWeight: FontWeight.w400,
                     fontSize: 12,
                     letterSpacing: 1,
-                    color: Appcolor.secondary,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 ),
               )

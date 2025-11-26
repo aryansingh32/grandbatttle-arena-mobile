@@ -70,16 +70,20 @@ class _NavigatorBarState extends State<NavigatorBar> {
             child: Container(
               height: 70,
               decoration: BoxDecoration(
-                color: Appcolor.primary.withOpacity(0.85), // Slightly more opaque
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Appcolor.cardsColor.withOpacity(0.9) // Default dark look
+                    : Theme.of(context).primaryColor.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(50),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1), // Reduced opacity
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Appcolor.secondary.withOpacity(0.3)
+                      : Colors.white.withOpacity(0.1),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.3),
-                    blurRadius: 10, // Reduced blur radius
+                    blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
                 ],
@@ -97,13 +101,17 @@ class _NavigatorBarState extends State<NavigatorBar> {
                       height: 50,
                       decoration: BoxDecoration(
                         color: isSelected 
-                            ? Appcolor.white.withOpacity(0.9)
+                            ? (Theme.of(context).brightness == Brightness.dark 
+                                ? Appcolor.secondary.withOpacity(0.2) 
+                                : Theme.of(context).cardColor.withOpacity(0.9))
                             : Colors.transparent,
                         shape: BoxShape.circle,
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: Appcolor.white.withOpacity(0.2),
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? Appcolor.secondary.withOpacity(0.4)
+                                      : Theme.of(context).cardColor.withOpacity(0.2),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
@@ -112,7 +120,9 @@ class _NavigatorBarState extends State<NavigatorBar> {
                       ),
                       child: Icon(
                         icons[index],
-                        color: isSelected ? Appcolor.primary : Appcolor.white,
+                        color: isSelected 
+                            ? (Theme.of(context).brightness == Brightness.dark ? Appcolor.secondary : Theme.of(context).primaryColor)
+                            : (Theme.of(context).brightness == Brightness.dark ? Appcolor.grey : Theme.of(context).cardColor),
                         size: 24,
                       ),
                     ),

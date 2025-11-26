@@ -8,6 +8,8 @@ import 'package:grand_battle_arena/services/auth_state_manager.dart';
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
 import 'package:grand_battle_arena/services/notification_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/theme/theme_manager.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -146,7 +148,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Appcolor.primary,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _isLoading
           ? _buildShimmerLoading()
           : _error != null
@@ -171,7 +173,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
   Widget _buildShimmerAppBar() {
     return SliverAppBar(
       expandedHeight: 200.0,
-      backgroundColor: Appcolor.cardsColor,
+      backgroundColor: Theme.of(context).cardColor,
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
         background: Column(
@@ -193,7 +195,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: Appcolor.cardsColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -341,8 +343,8 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
 
     return RefreshIndicator(
       onRefresh: _loadProfileData,
-      color: Appcolor.secondary,
-      backgroundColor: Appcolor.cardsColor,
+      color: Theme.of(context).colorScheme.secondary,
+      backgroundColor: Theme.of(context).cardColor,
       child: CustomScrollView(
         slivers: [
           _buildSliverAppBar(user),
@@ -362,14 +364,14 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
   SliverAppBar _buildSliverAppBar(UserModel user) {
     return SliverAppBar(
       expandedHeight: 200.0,
-      backgroundColor: Appcolor.cardsColor,
-      iconTheme: const IconThemeData(color: Appcolor.white),
+      backgroundColor: Theme.of(context).cardColor,
+      iconTheme: IconThemeData(color: Theme.of(context).iconTheme.color),
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
         centerTitle: true,
         title: Text(
-          user.userName,
-          style: const TextStyle(color: Appcolor.white, fontSize: 16.0),
+          FirebaseAuth.instance.currentUser?.displayName ?? user.userName,
+          style: TextStyle(color: Theme.of(context).appBarTheme.titleTextStyle?.color, fontSize: 16.0),
         ),
         background: Container(
           decoration: BoxDecoration(
@@ -377,8 +379,8 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Appcolor.cardsColor,
-                Appcolor.cardsColor.withOpacity(0.8),
+                Theme.of(context).cardColor,
+                Theme.of(context).cardColor.withOpacity(0.8),
               ],
             ),
           ),
@@ -395,7 +397,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Appcolor.secondary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
                         width: 2,
                       ),
                     ),
@@ -404,7 +406,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 12),
               Text(
-                user.userName,
+                FirebaseAuth.instance.currentUser?.displayName ?? user.userName,
                 style: const TextStyle(
                   color: Appcolor.white,
                   fontSize: 22,
@@ -438,7 +440,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
-        color: Appcolor.cardsColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -481,9 +483,9 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Appcolor.cardsColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,7 +592,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
               width: 4,
               height: 20,
               decoration: BoxDecoration(
-                color: Appcolor.secondary,
+                color: Theme.of(context).colorScheme.secondary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -619,7 +621,7 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Appcolor.cardsColor,
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: const Icon(
@@ -691,19 +693,40 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
             );
           },
         ),
-        _ActionTile(
-          icon: Icons.settings,
-          title: "Settings",
-          subtitle: "Manage your preferences",
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Settings page coming soon!'),
-                backgroundColor: Appcolor.secondary,
-                behavior: SnackBarBehavior.floating,
+        Consumer<ThemeManager>(
+          builder: (context, themeManager, _) {
+            return SwitchListTile(
+              title: Text(
+                "Show Quick Filters",
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
               ),
+              subtitle: Text(
+                "Show filter buttons on Home screen",
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                  fontSize: 12,
+                ),
+              ),
+              value: themeManager.showFilterGrid,
+              onChanged: (value) => themeManager.toggleFilterGrid(value),
+              secondary: Icon(
+                Icons.grid_view,
+                color: Theme.of(context).iconTheme.color,
+              ),
+              activeColor: Theme.of(context).colorScheme.secondary,
+              tileColor: Theme.of(context).cardColor,
             );
           },
+        ),
+        _ActionTile(
+          icon: Icons.palette,
+          title: "Appearance",
+          subtitle: "Customize app theme",
+          onTap: () => _showThemeSettings(context),
         ),
         _ActionTile(
           icon: Icons.logout,
@@ -809,13 +832,105 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Update check failed: $e'),
+          content: Text('Error checking for updates: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
-}
+
+
+  }
+
+  void _showThemeSettings(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Consumer<ThemeManager>(
+          builder: (context, themeManager, _) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Select Theme",
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildThemeOption(
+                    context,
+                    themeManager,
+                    AppThemeType.dark,
+                    "Dark Mode",
+                    Icons.dark_mode,
+                  ),
+                  _buildThemeOption(
+                    context,
+                    themeManager,
+                    AppThemeType.light,
+                    "Modern Light",
+                    Icons.light_mode,
+                  ),
+                  _buildThemeOption(
+                    context,
+                    themeManager,
+                    AppThemeType.futuristic,
+                    "Futuristic",
+                    Icons.science,
+                  ),
+                  _buildThemeOption(
+                    context,
+                    themeManager,
+                    AppThemeType.dynamic,
+                    "Dynamic",
+                    Icons.auto_awesome,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption(
+    BuildContext context,
+    ThemeManager themeManager,
+    AppThemeType theme,
+    String title,
+    IconData icon,
+  ) {
+    final isSelected = themeManager.currentTheme == theme;
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Theme.of(context).colorScheme.secondary : Appcolor.grey),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected ? Theme.of(context).textTheme.bodyLarge?.color : Appcolor.grey,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      trailing: isSelected
+          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.secondary)
+          : null,
+      onTap: () {
+        themeManager.setTheme(theme);
+        Navigator.pop(context);
+      },
+    );
+  }
+
 
 // Enhanced booking history card
 class _BookingHistoryCard extends StatelessWidget {

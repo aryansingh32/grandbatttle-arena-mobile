@@ -81,7 +81,42 @@ class WelcomePage extends StatelessWidget {
                 ],
               ),
 
-              const Spacer(),
+              // --- Update alert (takes the empty space) ---
+              Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Appcolor.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Appcolor.secondary.withOpacity(0.12)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Appcolor.secondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            "The app is currently updating. It may take about 50 seconds to open the first time — please be patient.",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Appcolor.grey,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                ],
+              ),
 
               // --- Auth actions ---
               Column(

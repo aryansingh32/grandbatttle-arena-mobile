@@ -21,6 +21,7 @@ class TournamentCard extends StatelessWidget {
   final double imgHeight;
   final double dividerHeight;
   final double dividerWidth;
+  final int? tournamentId;
 
   const TournamentCard({
     super.key,
@@ -40,6 +41,7 @@ class TournamentCard extends StatelessWidget {
     this.dividerHeight = 25,
     this.dividerWidth = 0.5,
     this.imgHeight = 180,
+    this.tournamentId,
   });
 
   @override
@@ -53,31 +55,34 @@ class TournamentCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Appcolor.cardsColor,
+          color: Theme.of(context).cardColor,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+            Hero(
+              tag: 'tournament_img_${tournamentId ?? title}',
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                child: imageHasScheme
+                    ? Image.network(
+                        imageUrl,
+                        width: double.infinity,
+                        height: imgHeight,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imageFallback(),
+                      )
+                    : Image.asset(
+                        imageUrl,
+                        width: double.infinity,
+                        height: imgHeight,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _imageFallback(),
+                      ),
               ),
-              child: imageHasScheme
-                  ? Image.network(
-                      imageUrl,
-                      width: double.infinity,
-                      height: imgHeight,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _imageFallback(),
-                    )
-                  : Image.asset(
-                      imageUrl,
-                      width: double.infinity,
-                      height: imgHeight,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _imageFallback(),
-                    ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
@@ -100,7 +105,7 @@ class TournamentCard extends StatelessWidget {
                         
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
-                          color: Appcolor.secondary,
+                          color: Theme.of(context).colorScheme.secondary,
                         ),
                       ),
                     ],
@@ -125,7 +130,7 @@ class TournamentCard extends StatelessWidget {
                             
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
-                              color: Appcolor.secondary,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                           ),
                         ],
@@ -136,11 +141,11 @@ class TournamentCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _infoColumn("Entry/Player", entry, "assets/icons/dollar.png"),
+                      _infoColumn("Entry/Player", entry, "assets/icons/dollar.png", context),
                       if(isDivider)Container(height: dividerHeight, width: dividerWidth,  decoration:  BoxDecoration(color: Appcolor.grey),) ,
-                      _infoColumn("Team Size", teamSize, "assets/icons/swords.png"),
+                      _infoColumn("Team Size", teamSize, "assets/icons/swords.png", context),
                       if(isDivider)Container(height: dividerHeight, width: dividerWidth,  decoration:  BoxDecoration(color: Appcolor.grey),),
-                      _infoColumn("Enrolled", enrolled, "assets/icons/people.png"),
+                      _infoColumn("Enrolled", enrolled, "assets/icons/people.png", context),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -168,7 +173,7 @@ class TournamentCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
-                            color: Appcolor.secondary,
+                            color: Theme.of(context).colorScheme.secondary,
                           ),
                           child: Text("Register",
                             style: TextStyle(
@@ -214,7 +219,7 @@ class TournamentCard extends StatelessWidget {
     );
   }
 
-  Widget _infoColumn(String title, String value, String iconPath) {
+  Widget _infoColumn(String title, String value, String iconPath, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -234,7 +239,7 @@ class TournamentCard extends StatelessWidget {
               style: TextStyle(
               
                 fontSize: 12,
-                color: Appcolor.secondary,
+                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],

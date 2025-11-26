@@ -172,6 +172,7 @@ class _TournamentCardsState extends State<TournamentCards> {
             enrolled: '${tournament.registeredPlayers}/${tournament.maxPlayers}',
             map: tournament.map ?? 'Unknown Map',
             game: tournament.game,
+            tournamentId: tournament.id,
             onRegister: () => Navigator.push(
               context,
               MaterialPageRoute(

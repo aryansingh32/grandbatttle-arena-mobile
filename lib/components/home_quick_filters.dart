@@ -18,9 +18,9 @@ class HomeQuickFilters extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Appcolor.cardsColor.withOpacity(0.8),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Appcolor.secondary.withOpacity(0.25)),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.25)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.45),
@@ -34,12 +34,12 @@ class HomeQuickFilters extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.filter_alt_rounded, color: Appcolor.secondary, size: 20),
+              Icon(Icons.filter_alt_rounded, color: Theme.of(context).colorScheme.secondary, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Quick Filters',
                 style: TextStyle(
-                  color: Appcolor.white,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.4,
                 ),
@@ -52,6 +52,7 @@ class HomeQuickFilters extends StatelessWidget {
             items: _teamSizes,
             selected: filters.teamSizeFilter,
             onSelected: filters.setTeamSizeFilter,
+            context: context,
           ),
           const SizedBox(height: 10),
           _buildChipRow(
@@ -59,6 +60,7 @@ class HomeQuickFilters extends StatelessWidget {
             items: _maps,
             selected: filters.mapFilter,
             onSelected: filters.setMapFilter,
+            context: context,
           ),
         ],
       ),
@@ -70,6 +72,7 @@ class HomeQuickFilters extends StatelessWidget {
     required List<String> items,
     required String selected,
     required ValueChanged<String> onSelected,
+    required BuildContext context,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +80,7 @@ class HomeQuickFilters extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Appcolor.grey,
+            color: Theme.of(context).textTheme.bodyMedium?.color,
             fontSize: 12,
             letterSpacing: 0.3,
           ),
@@ -98,22 +101,22 @@ class HomeQuickFilters extends StatelessWidget {
                   gradient: isActive
                       ? LinearGradient(
                           colors: [
-                            Appcolor.secondary,
-                            Appcolor.secondary.withOpacity(0.8),
+                            Theme.of(context).colorScheme.secondary,
+                            Theme.of(context).colorScheme.secondary.withOpacity(0.8),
                           ],
                         )
                       : null,
-                  color: isActive ? null : Appcolor.primary.withOpacity(0.4),
+                  color: isActive ? null : Theme.of(context).primaryColor.withOpacity(0.4),
                   border: Border.all(
                     color: isActive
                         ? Colors.transparent
-                        : Appcolor.grey.withOpacity(0.5),
+                        : Theme.of(context).disabledColor.withOpacity(0.5),
                   ),
                 ),
                 child: Text(
                   item,
                   style: TextStyle(
-                    color: isActive ? Appcolor.primary : Appcolor.white,
+                    color: isActive ? Theme.of(context).primaryColor : Theme.of(context).textTheme.bodyLarge?.color,
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                   ),

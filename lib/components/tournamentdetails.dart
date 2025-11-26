@@ -111,8 +111,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       
       setState(() {
         // Temporary test for Spectator Mode
-        tournament = tournamentData.copyWith(streamUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-        // tournament = tournamentData; // Uncomment this and remove above line for production
+        // tournament = tournamentData.copyWith(streamUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+        tournament = tournamentData; // Uncomment this and remove above line for production
         
         isLoading = false;
       });
@@ -280,27 +280,30 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   }
 
   Widget _buildHeaderImage() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 40, 20, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: DecorationImage(
-          image: tournament!.imageUrl != null 
-            ? NetworkImage(tournament!.imageUrl!)
-            : const AssetImage("assets/images/freefirebanner4.webp") as ImageProvider,
-          fit: BoxFit.cover,
-        ),
-      ),
+    return Hero(
+      tag: 'tournament_img_${widget.tournamentId}',
       child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 40, 20, 20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              Colors.black87,
-            ],
+          image: DecorationImage(
+            image: tournament!.imageUrl != null 
+              ? NetworkImage(tournament!.imageUrl!)
+              : const AssetImage("assets/images/freefirebanner4.webp") as ImageProvider,
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black87,
+              ],
+            ),
           ),
         ),
       ),
@@ -321,7 +324,7 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
             end: _colorIndex == 0 ? Alignment.bottomRight : Alignment.topLeft,
             colors: _bgColors.length >= 2 
                 ? [_bgColors[0], _bgColors[1]] 
-                : [Appcolor.primary, Colors.black],
+                : [Theme.of(context).scaffoldBackgroundColor, Colors.black],
           ),
         ),
         child: isLoading 
@@ -334,9 +337,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: CircularProgressIndicator(
-        color: Appcolor.secondary,
+        color: Theme.of(context).colorScheme.secondary,
       ),
     );
   }
@@ -408,10 +411,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
+                        Text(
                           'Prize Pool',
                           style: TextStyle(
-                            color: Appcolor.secondary,
+                            color: Theme.of(context).colorScheme.secondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
@@ -433,8 +436,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
                             const SizedBox(width: 6),
                             Text(
                               tournament!.prizePool.toString(),
-                              style: const TextStyle(
-                                color: Appcolor.secondary,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -586,8 +589,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
             const SizedBox(width: 6),
             Text(
               value,
-              style: const TextStyle(
-                color: Appcolor.secondary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.secondary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -734,9 +737,9 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Appcolor.cardsColor,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Appcolor.secondary.withOpacity(0.2)),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -770,8 +773,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Appcolor.primary.withOpacity(0.4),
-        border: Border.all(color: Appcolor.secondary.withOpacity(0.3)),
+        color: Theme.of(context).primaryColor.withOpacity(0.4),
+        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,8 +794,8 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
               const SizedBox(width: 4),
               Text(
                 value,
-                style: const TextStyle(
-                  color: Appcolor.secondary,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.secondary,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),

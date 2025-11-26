@@ -46,7 +46,10 @@ class _TopBarState extends State<TopBar> {
       final userProfile = await ApiService.getUserProfile();
       if (mounted) {
         setState(() {
-          userName = userProfile.userName ?? userName;
+          // Only update if we don't already have a display name
+          if (FirebaseAuthService.currentUser?.displayName == null) {
+            userName = userProfile.userName ?? userName;
+          }
         });
       }
     } catch (e) {
@@ -126,7 +129,7 @@ class _TopBarState extends State<TopBar> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: Appcolor.cardsColor,
+          backgroundColor: Theme.of(context).cardColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -145,7 +148,7 @@ class _TopBarState extends State<TopBar> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text('Clear All', style: TextStyle(color: Appcolor.secondary)),
+              child: Text('Clear All', style: TextStyle(color: Theme.of(context).colorScheme.secondary)),
             ),
           ],
         ),
@@ -182,7 +185,7 @@ class _TopBarState extends State<TopBar> {
               ],
             ),
             duration: Duration(seconds: 2),
-            backgroundColor: Appcolor.secondary,
+            backgroundColor: Theme.of(context).colorScheme.secondary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -227,7 +230,7 @@ class _TopBarState extends State<TopBar> {
                     "Welcome",
                     style: TextStyle(
                       fontWeight: FontWeight.w400,
-                      color: Appcolor.white,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                       letterSpacing: 1,
                       fontSize: 12,
                     ),
@@ -237,7 +240,7 @@ class _TopBarState extends State<TopBar> {
                     userName,
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
-                      color: Appcolor.white,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                       letterSpacing: 1,
                       fontSize: 14,
                     ),
@@ -259,10 +262,10 @@ class _TopBarState extends State<TopBar> {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Appcolor.cardsColor,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Appcolor.secondary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
                       width: 1,
                     ),
                   ),
@@ -296,7 +299,7 @@ class _TopBarState extends State<TopBar> {
                                     (Match m) => '${m[1]},',
                                   ),
                               style: TextStyle(
-                                color: Appcolor.secondary,
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
@@ -330,7 +333,7 @@ class _TopBarState extends State<TopBar> {
                             color: Colors.red,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Appcolor.primary,
+                              color: Theme.of(context).primaryColor,
                               width: 2,
                             ),
                           ),
@@ -364,7 +367,7 @@ class _TopBarState extends State<TopBar> {
   void _showNotificationBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Appcolor.cardsColor,
+      backgroundColor: Theme.of(context).cardColor,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
@@ -383,7 +386,7 @@ class _TopBarState extends State<TopBar> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Appcolor.secondaryW50,
+                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -400,7 +403,7 @@ class _TopBarState extends State<TopBar> {
                             Text(
                               'Notifications',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: Theme.of(context).textTheme.bodyLarge?.color,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -413,13 +416,13 @@ class _TopBarState extends State<TopBar> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Appcolor.secondary,
+                                  color: Theme.of(context).colorScheme.secondary,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   '$unreadNotificationCount new',
                                   style: TextStyle(
-                                    color: Appcolor.primary,
+                                    color: Theme.of(context).primaryColor,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -437,13 +440,13 @@ class _TopBarState extends State<TopBar> {
                             },
                             icon: Icon(
                               Icons.clear_all,
-                              color: Appcolor.secondary,
+                              color: Theme.of(context).colorScheme.secondary,
                               size: 18,
                             ),
                             label: Text(
                               'Clear All',
                               style: TextStyle(
-                                color: Appcolor.secondary,
+                                color: Theme.of(context).colorScheme.secondary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -453,7 +456,7 @@ class _TopBarState extends State<TopBar> {
                                 horizontal: 12,
                                 vertical: 6,
                               ),
-                              backgroundColor: Appcolor.secondary.withOpacity(0.1),
+                              backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -474,7 +477,7 @@ class _TopBarState extends State<TopBar> {
                     child: _isLoadingNotifications
                         ? Center(
                             child: CircularProgressIndicator(
-                              color: Appcolor.secondary,
+                              color: Theme.of(context).colorScheme.secondary,
                             ),
                           )
                         : notifications.isEmpty
@@ -485,13 +488,13 @@ class _TopBarState extends State<TopBar> {
                                     Icon(
                                       Icons.notifications_off_outlined,
                                       size: 64,
-                                      color: Appcolor.grey,
+                                      color: Theme.of(context).iconTheme.color?.withOpacity(0.5),
                                     ),
                                     SizedBox(height: 16),
                                     Text(
                                       'No notifications yet',
                                       style: TextStyle(
-                                        color: Appcolor.grey,
+                                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
                                         fontSize: 16,
                                       ),
                                     ),
@@ -499,7 +502,7 @@ class _TopBarState extends State<TopBar> {
                                     Text(
                                       'We\'ll notify you when something arrives',
                                       style: TextStyle(
-                                        color: Appcolor.grey,
+                                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -511,7 +514,7 @@ class _TopBarState extends State<TopBar> {
                                   await _loadNotifications();
                                   setModalState(() {});
                                 },
-                                color: Appcolor.secondary,
+                                color: Theme.of(context).colorScheme.secondary,
                                 child: ListView.builder(
                                   padding: EdgeInsets.symmetric(horizontal: 16),
                                   itemCount: notifications.length,
@@ -545,8 +548,8 @@ class _TopBarState extends State<TopBar> {
                                       },
                                       child: Card(
                                         color: isRead
-                                            ? Appcolor.cardsColor
-                                            : Appcolor.secondary.withOpacity(0.1),
+                                            ? Theme.of(context).cardColor
+                                            : Theme.of(context).colorScheme.secondary.withOpacity(0.1),
                                         margin: EdgeInsets.only(bottom: 8),
                                         elevation: isRead ? 0 : 2,
                                         shape: RoundedRectangleBorder(
@@ -554,7 +557,7 @@ class _TopBarState extends State<TopBar> {
                                           side: BorderSide(
                                             color: isRead
                                                 ? Colors.transparent
-                                                : Appcolor.secondary.withOpacity(0.3),
+                                                : Theme.of(context).colorScheme.secondary.withOpacity(0.3),
                                             width: 1,
                                           ),
                                         ),
@@ -565,8 +568,8 @@ class _TopBarState extends State<TopBar> {
                                           ),
                                           leading: CircleAvatar(
                                             backgroundColor: isRead
-                                                ? Appcolor.grey
-                                                : Appcolor.secondary,
+                                                ? Theme.of(context).disabledColor
+                                                : Theme.of(context).colorScheme.secondary,
                                             child: Icon(
                                               _getNotificationIcon(notification.type),
                                               color: Colors.white,
@@ -576,7 +579,7 @@ class _TopBarState extends State<TopBar> {
                                           title: Text(
                                             notification.title ?? 'Notification',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Theme.of(context).textTheme.bodyLarge?.color,
                                               fontWeight: isRead
                                                   ? FontWeight.normal
                                                   : FontWeight.bold,
@@ -591,7 +594,7 @@ class _TopBarState extends State<TopBar> {
                                               Text(
                                                 notification.message ?? 'No message',
                                                 style: TextStyle(
-                                                  color: Colors.grey[400],
+                                                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
                                                   fontSize: 12,
                                                 ),
                                                 maxLines: 2,
@@ -602,7 +605,7 @@ class _TopBarState extends State<TopBar> {
                                                 _formatNotificationTime(
                                                     notification.createdAt),
                                                 style: TextStyle(
-                                                  color: Appcolor.grey,
+                                                  color: Theme.of(context).textTheme.bodySmall?.color,
                                                   fontSize: 10,
                                                 ),
                                               ),
@@ -624,7 +627,7 @@ class _TopBarState extends State<TopBar> {
                                                   width: 10,
                                                   height: 10,
                                                   decoration: BoxDecoration(
-                                                    color: Appcolor.secondary,
+                                                    color: Theme.of(context).colorScheme.secondary,
                                                     shape: BoxShape.circle,
                                                   ),
                                                 )

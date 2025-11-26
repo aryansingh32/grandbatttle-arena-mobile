@@ -6,6 +6,8 @@ import 'package:grand_battle_arena/pages/sign_up_page.dart';
 
 import 'package:grand_battle_arena/services/notification_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/theme/theme_manager.dart';
+import 'package:grand_battle_arena/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart'; // FIXED: Import for background handler
@@ -51,6 +53,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthStateManager()),
         ChangeNotifierProvider(create: (_) => FilterProvider()),
         ChangeNotifierProvider(create: (_) => BookingRefreshNotifier()),
+        ChangeNotifierProvider(create: (_) => ThemeManager()),
       ],
       child: const MyApp(),
     ),
@@ -63,42 +66,39 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // REMOVE the Consumer wrapping MaterialApp
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: "Esports App",
-      navigatorKey: NavigatorKey.key, // CHANGE: enable notification-driven navigation.
-      // USE the home property and point it to your new wrapper
-      home:  const AuthWrapper(signedInScreen: MainContainer(), signedOutScreen: WelcomePage()),
-      // Your routes are still needed for in-app navigation
-      routes: {
-        '/main': (context) => MainContainer(),
-        '/profile': (context) => Profile(),
-        '/tournament': (context) => MainContainer(currentIndex: 1),
-        '/wallet': (context) => MainContainer(currentIndex: 2),
-        // '/tournamentdetail': (context) => TournamentDetailsPage(),
-        // '/welcome': (context) => const WelcomePage(),
-        // '/signin': (context) => const SignInPage(),
-        // '/signup': (context) => const SignUpPage(),
-      },
-      theme: ThemeData(
-        fontFamily: 'Rubik',
-        scaffoldBackgroundColor: Appcolor.primary,
-        canvasColor: Appcolor.primary,
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
-            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
-            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    return Consumer<ThemeManager>(
+      builder: (context, themeManager, child) {
+        ThemeData theme;
+        switch (themeManager.currentTheme) {
+          case AppThemeType.light:
+            theme = AppTheme.lightTheme;
+            break;
+          case AppThemeType.futuristic:
+            theme = AppTheme.futuristicTheme;
+            break;
+          case AppThemeType.dynamic:
+            theme = AppTheme.getDynamicTheme(themeManager.dynamicBackgroundColor);
+            break;
+          case AppThemeType.dark:
+          default:
+            theme = AppTheme.darkTheme;
+            break;
+        }
+
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: "Esports App",
+          navigatorKey: NavigatorKey.key,
+          home: const AuthWrapper(signedInScreen: MainContainer(), signedOutScreen: WelcomePage()),
+          routes: {
+            '/main': (context) => MainContainer(),
+            '/profile': (context) => Profile(),
+            '/tournament': (context) => MainContainer(currentIndex: 1),
+            '/wallet': (context) => MainContainer(currentIndex: 2),
           },
-        ), // CHANGE: use dark-friendly transitions to remove white flash.
-        appBarTheme: AppBarTheme(
-          color: Appcolor.primary,
-          iconTheme: IconThemeData(color: Appcolor.white),
-        ),
-      ),
+          theme: theme,
+        );
+      },
     );
   }
 }
