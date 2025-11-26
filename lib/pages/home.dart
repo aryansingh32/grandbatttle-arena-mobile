@@ -52,7 +52,7 @@ class _HomeState extends State<Home> {
                       TopBar(), // For TopBar
                       BannerSlider(),
                       Homegames(), // Games 
-                      const HomeQuickFilters(), // CHANGE: add stylish quick filters bar.
+                      //const HomeQuickFilters(), // CHANGE: add stylish quick filters bar.
                       Consumer<ThemeManager>(
                         builder: (context, themeManager, _) {
                           if (!themeManager.showFilterGrid) return const SizedBox.shrink();

@@ -278,10 +278,11 @@ class FirebaseAuthService {
         '❌ FirebaseAuthService: FirebaseAuthException - ${e.code}: ${e.message}',
       );
       return AuthResult.error(_handleFirebaseAuthError(e));
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ FirebaseAuthService: Google Sign-in error: $e');
+      print('Stack trace: $stackTrace');
       return AuthResult.error(
-        'An unexpected error occurred during Google sign-in: ${e.toString()}',
+        'Google Sign-In failed: ${e.toString()}',
       );
     }
   }
