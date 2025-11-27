@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class TournamentCard extends StatelessWidget {
   final String imageUrl;
@@ -68,12 +69,13 @@ class TournamentCard extends StatelessWidget {
                   topRight: Radius.circular(20),
                 ),
                 child: imageHasScheme
-                    ? Image.network(
-                        imageUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
                         width: double.infinity,
                         height: imgHeight,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imageFallback(),
+                        placeholder: (context, url) => _buildShimmerPlaceholder(),
+                        errorWidget: (context, url, error) => _imageFallback(),
                       )
                     : Image.asset(
                         imageUrl,
@@ -261,6 +263,17 @@ class TournamentCard extends StatelessWidget {
             color: Colors.grey[900],
           ),
         ),
+      ),
+    );
+  }
+  Widget _buildShimmerPlaceholder() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[700]!,
+      child: Container(
+        width: double.infinity,
+        height: imgHeight,
+        color: Colors.grey[900],
       ),
     );
   }

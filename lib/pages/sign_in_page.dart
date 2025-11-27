@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/services/auth_state_manager.dart';
 import 'package:grand_battle_arena/pages/sign_up_page.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/providers/app_config_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -61,6 +63,26 @@ class _SignInPageState extends State<SignInPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 20),
+
+                  // Dynamic Logo
+                  Consumer<AppConfigProvider>(
+                    builder: (context, configProvider, child) {
+                      if (configProvider.logoUrl != null && configProvider.logoUrl!.isNotEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 20.0),
+                            child: CachedNetworkImage(
+                              imageUrl: configProvider.logoUrl!,
+                              height: 100,
+                              placeholder: (context, url) => const SizedBox(height: 100),
+                              errorWidget: (context, url, error) => const SizedBox(),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
 
                   // Header
                   const Text(

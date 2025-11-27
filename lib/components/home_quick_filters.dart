@@ -7,8 +7,8 @@ import 'package:grand_battle_arena/services/filter_provider.dart';
 class HomeQuickFilters extends StatelessWidget {
   const HomeQuickFilters({super.key});
 
-  static const _teamSizes = ['All', 'Solo', 'Duo', 'Squad', 'Hexa'];
-  static const _maps = ['All', 'Bermuda', 'Purgatory', 'Kalahari'];
+  // static const _teamSizes = ['All', 'Solo', 'Duo', 'Squad', 'Hexa'];
+  // static const _maps = ['All', 'Bermuda', 'Purgatory', 'Kalahari'];
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,7 @@ class HomeQuickFilters extends StatelessWidget {
           const SizedBox(height: 12),
           _buildChipRow(
             label: 'Team',
-            items: _teamSizes,
+            items: filters.teamSizes,
             selected: filters.teamSizeFilter,
             onSelected: filters.setTeamSizeFilter,
             context: context,
@@ -57,7 +57,7 @@ class HomeQuickFilters extends StatelessWidget {
           const SizedBox(height: 10),
           _buildChipRow(
             label: 'Map',
-            items: _maps,
+            items: filters.maps,
             selected: filters.mapFilter,
             onSelected: filters.setMapFilter,
             context: context,

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
 
+import 'package:grand_battle_arena/services/api_service.dart';
+
 /// CHANGE: Centralized filter state so home + tournaments share quick filters.
 class FilterProvider extends ChangeNotifier {
   String _gameFilter = 'All';
@@ -8,10 +10,45 @@ class FilterProvider extends ChangeNotifier {
   String _mapFilter = 'All';
   String _timeSlotFilter = 'All';
 
+  bool _isLoading = true;
+  Map<String, List<String>> _availableFilters = {
+    'games': [],
+    'teamSizes': [],
+    'maps': [],
+    'timeSlots': [],
+  };
+
+  bool get isLoading => _isLoading;
   String get gameFilter => _gameFilter;
   String get teamSizeFilter => _teamSizeFilter;
   String get mapFilter => _mapFilter;
   String get timeSlotFilter => _timeSlotFilter;
+
+  List<String> get games => ['All', ...(_availableFilters['games'] ?? [])];
+  List<String> get teamSizes => ['All', ...(_availableFilters['teamSizes'] ?? [])];
+  List<String> get maps => ['All', ...(_availableFilters['maps'] ?? [])];
+  List<String> get timeSlots => ['All', ...(_availableFilters['timeSlots'] ?? [])];
+
+  FilterProvider() {
+    _fetchFilters();
+  }
+
+  Future<void> _fetchFilters() async {
+    try {
+      final filters = await ApiService.getFilters();
+      _availableFilters = {
+        'games': List<String>.from(filters['games'] ?? []),
+        'teamSizes': List<String>.from(filters['teamSizes'] ?? []),
+        'maps': List<String>.from(filters['maps'] ?? []),
+        'timeSlots': List<String>.from(filters['timeSlots'] ?? []),
+      };
+    } catch (e) {
+      print('Error fetching filters: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   void setGameFilter(String value) {
     if (_gameFilter == value) return;

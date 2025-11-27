@@ -11,7 +11,7 @@ enum AppThemeType {
 
 class ThemeManager extends ChangeNotifier {
   AppThemeType _currentTheme = AppThemeType.dark;
-  Timer? _dynamicThemeTimer;
+  // Timer? _dynamicThemeTimer; // Removed for performance
   Color _dynamicColor = const Color.fromRGBO(9, 11, 14, 1);
   int _colorIndex = 0;
   bool _showFilterGrid = true;
@@ -38,9 +38,9 @@ class ThemeManager extends ChangeNotifier {
     _currentTheme = AppThemeType.values[themeIndex];
     _showFilterGrid = prefs.getBool('show_filter_grid') ?? true;
     
-    if (_currentTheme == AppThemeType.dynamic) {
-      _startDynamicTheme();
-    }
+    // if (_currentTheme == AppThemeType.dynamic) {
+    //   _startDynamicTheme();
+    // }
     notifyListeners();
   }
 
@@ -51,11 +51,11 @@ class ThemeManager extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('theme_type', theme.index);
 
-    if (theme == AppThemeType.dynamic) {
-      _startDynamicTheme();
-    } else {
-      _stopDynamicTheme();
-    }
+    // if (theme == AppThemeType.dynamic) {
+    //   _startDynamicTheme();
+    // } else {
+    //   _stopDynamicTheme();
+    // }
     
     notifyListeners();
   }
@@ -67,23 +67,23 @@ class ThemeManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _startDynamicTheme() {
-    _stopDynamicTheme();
-    _dynamicThemeTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _colorIndex = (_colorIndex + 1) % _dynamicColors.length;
-      _dynamicColor = _dynamicColors[_colorIndex];
-      notifyListeners();
-    });
-  }
+  // void _startDynamicTheme() {
+  //   _stopDynamicTheme();
+  //   _dynamicThemeTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+  //     _colorIndex = (_colorIndex + 1) % _dynamicColors.length;
+  //     _dynamicColor = _dynamicColors[_colorIndex];
+  //     notifyListeners();
+  //   });
+  // }
 
-  void _stopDynamicTheme() {
-    _dynamicThemeTimer?.cancel();
-    _dynamicThemeTimer = null;
-  }
+  // void _stopDynamicTheme() {
+  //   _dynamicThemeTimer?.cancel();
+  //   _dynamicThemeTimer = null;
+  // }
 
   @override
   void dispose() {
-    _stopDynamicTheme();
+    // _stopDynamicTheme();
     super.dispose();
   }
 }

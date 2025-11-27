@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:grand_battle_arena/pages/sign_in_page.dart';
 import 'package:grand_battle_arena/pages/sign_up_page.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/providers/app_config_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -21,6 +24,23 @@ class WelcomePage extends StatelessWidget {
               Column(
                 children: [
                   const SizedBox(height: 40),
+                  // Dynamic Logo
+                  Consumer<AppConfigProvider>(
+                    builder: (context, configProvider, child) {
+                      if (configProvider.logoUrl != null && configProvider.logoUrl!.isNotEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: CachedNetworkImage(
+                            imageUrl: configProvider.logoUrl!,
+                            height: 120,
+                            placeholder: (context, url) => const SizedBox(height: 120),
+                            errorWidget: (context, url, error) => const SizedBox(),
+                          ),
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

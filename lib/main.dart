@@ -21,6 +21,7 @@ import 'services/auth_state_manager.dart';
 import 'services/booking_refresh_notifier.dart';
 import 'services/filter_provider.dart'; // CHANGE: expose shared filters for quick chips.
 import 'services/notification_service.dart' show NavigatorKey; // CHANGE: use app-wide navigator key.
+import 'package:grand_battle_arena/providers/app_config_provider.dart';
 
 
 void main() async {
@@ -45,7 +46,8 @@ void main() async {
   print('✅ Background message handler registered');
 
   // Initialize notification service (includes FCM token registration)
-  await NotificationService.initialize();
+  // Don't await to avoid blocking startup
+  NotificationService.initialize().then((_) => print('✅ Notification Service Initialized'));
 
   runApp(
     MultiProvider(
@@ -53,7 +55,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthStateManager()),
         ChangeNotifierProvider(create: (_) => FilterProvider()),
         ChangeNotifierProvider(create: (_) => BookingRefreshNotifier()),
+        ChangeNotifierProvider(create: (_) => BookingRefreshNotifier()),
         ChangeNotifierProvider(create: (_) => ThemeManager()),
+        ChangeNotifierProvider(create: (_) => AppConfigProvider()..fetchConfig()),
       ],
       child: const MyApp(),
     ),

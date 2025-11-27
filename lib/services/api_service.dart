@@ -13,10 +13,11 @@ import 'package:grand_battle_arena/models/deposit_request_model.dart';
 import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/models/payment_qr_response.dart';
 import 'package:grand_battle_arena/models/wallet_ledger_model.dart';
+import 'package:grand_battle_arena/config/api_config.dart';
 
 /// Enhanced API endpoints with notification and payment support
 class _ApiEndpoints {
-  static const String baseUrl = 'https://grand-battle-arena-backend.onrender.com';
+  static const String baseUrl = ApiConfig.baseUrl;
   static const String _api = '/api';
 
   // Public Endpoints
@@ -660,6 +661,18 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   static Future<Map<String, dynamic>> getRegistrationRequirements() async {
     final response = await _get(_ApiEndpoints.registrationRequirements, requireAuth: false);
     return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  // --- App Config ---
+  static Future<Map<String, dynamic>> getAppConfig() async {
+    try {
+      final response = await _get('/config/logo', requireAuth: false);
+      return _handleResponse(response) as Map<String, dynamic>;
+    } catch (e) {
+      // Return empty map on error to allow app to proceed with defaults
+      print('Failed to load app config: $e');
+      return {};
+    }
   }
 }
 

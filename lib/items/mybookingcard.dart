@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:grand_battle_arena/utils/toast_utils.dart';
@@ -262,19 +263,23 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
               child: Stack(
                 children: [
                   usesNetworkImage
-                      ? Image.network(
-                          widget.imageUrl,
+                      ? CachedNetworkImage(
+                          imageUrl: widget.imageUrl,
                           width: double.infinity,
                           height: 108,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: double.infinity,
-                              height: 108,
-                              color: Appcolor.primary.withOpacity(0.3),
-                              child: const Icon(Icons.image_not_supported, color: Appcolor.grey, size: 40),
-                            );
-                          },
+                          placeholder: (context, url) => Container(
+                            width: double.infinity,
+                            height: 108,
+                            color: Appcolor.primary.withOpacity(0.3),
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: double.infinity,
+                            height: 108,
+                            color: Appcolor.primary.withOpacity(0.3),
+                            child: const Icon(Icons.image_not_supported, color: Appcolor.grey, size: 40),
+                          ),
                         )
                       : Image.asset(
                           widget.imageUrl,
