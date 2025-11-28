@@ -313,92 +313,107 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tournament Title
-                    Text(
-                      widget.title,
-                      style: TextStyle(
-                        fontSize: 11, 
-                        color: Appcolor.white, 
-                        fontWeight: FontWeight.bold
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    
-                    // Date and Prize Pool Row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _formatDateTime(widget.startTime),
-                            style: TextStyle(fontSize: 11, color: Appcolor.grey),
-                          ),
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              "Prize Pool",
-                              style: TextStyle(
-                                fontSize: 10, 
-                                color: Appcolor.secondary, 
-                                fontWeight: FontWeight.w500
-                              ),
+                    // Content Wrapper
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Tournament Title
+                          Text(
+                            widget.title,
+                            style: TextStyle(
+                              fontSize: 11, 
+                              color: Appcolor.white, 
+                              fontWeight: FontWeight.bold
                             ),
-                            Row(
-                              children: [
-                                Image.asset("assets/icons/dollar.png", height: 10, width: 10),
-                                Text(
-                                  widget.prizePool.toString(),
-                                  style: TextStyle(fontSize: 8, color: Appcolor.secondary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          
+                          // Date and Prize Pool Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _formatDateTime(widget.startTime),
+                                  style: TextStyle(fontSize: 11, color: Appcolor.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "Prize Pool",
+                                    style: TextStyle(
+                                      fontSize: 10, 
+                                      color: Appcolor.secondary, 
+                                      fontWeight: FontWeight.w500
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      Image.asset("assets/icons/dollar.png", height: 10, width: 10),
+                                      Text(
+                                        widget.prizePool.toString(),
+                                        style: TextStyle(fontSize: 8, color: Appcolor.secondary),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Credentials Section - Show when tournament is live OR when admin provides them early
+                          if (isTournamentLive || hasValidCredentials) ...[
+                            Flexible(child: SingleChildScrollView(child: _buildGameCredentials())),
+                          ] else if (_isLoadingCredentials) ...[
+                            // Show loading indicator when fetching credentials
+                            const Center(
+                              child: SizedBox(
+                                width: 12, 
+                                height: 12, 
+                                child: CircularProgressIndicator(strokeWidth: 2)
+                              )
                             ),
                           ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Credentials Section - Show when tournament is live OR when admin provides them early
-                    if (isTournamentLive || hasValidCredentials) ...[
-                      _buildGameCredentials(),
-                    ] else if (_isLoadingCredentials) ...[
-                      // Show loading indicator when fetching credentials
-                      const Center(
-                        child: SizedBox(
-                          width: 12, 
-                          height: 12, 
-                          child: CircularProgressIndicator(strokeWidth: 2)
-                        )
+                        ],
                       ),
-                    ],
+                    ),
                     
-                    const Spacer(),
+                    const SizedBox(height: 4),
                     
                     // Action Buttons
                     Row(
                       children: [
                         if (widget.onDetailsPressed != null)
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: widget.onDetailsPressed,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Appcolor.secondary,
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)
+                            child: SizedBox(
+                              height: 28,
+                              child: ElevatedButton(
+                                onPressed: widget.onDetailsPressed,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Appcolor.secondary,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                "Details", 
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Appcolor.cardsColor,
-                                  fontWeight: FontWeight.w500,
-                                )
+                                child: Text(
+                                  "Details", 
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Appcolor.cardsColor,
+                                    fontWeight: FontWeight.w500,
+                                  )
+                                ),
                               ),
                             ),
                           ),
@@ -406,40 +421,46 @@ class _TournamentBookingCardState extends State<TournamentBookingCard> {
                           const SizedBox(width: 8),
                         if (widget.onViewParticipants != null)
                           Expanded(
-                            child: TextButton(
-                              onPressed: widget.onViewParticipants,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(color: Appcolor.secondary),
+                            child: SizedBox(
+                              height: 28,
+                              child: TextButton(
+                                onPressed: widget.onViewParticipants,
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    side: BorderSide(color: Appcolor.secondary),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                "Participants", 
-                                style: TextStyle(fontSize: 12, color: Appcolor.secondary)
+                                child: Text(
+                                  "Participants", 
+                                  style: TextStyle(fontSize: 10, color: Appcolor.secondary)
+                                ),
                               ),
                             ),
                           ),
                         if (widget.onUploadResult != null) ...[
                           const SizedBox(width: 8),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: widget.onUploadResult,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              height: 28,
+                              child: ElevatedButton(
+                                onPressed: widget.onUploadResult,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
-                              ),
-                              child: const Text(
-                                "Upload", 
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                )
+                                child: const Text(
+                                  "Upload", 
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  )
+                                ),
                               ),
                             ),
                           ),

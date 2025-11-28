@@ -570,7 +570,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                           if (!isBookingInProgress)
                             IconButton(
                               onPressed: () {
-                                focusNodes.values.forEach((node) => node.dispose());
+                                // focusNodes.values.forEach((node) => node.dispose()); // REMOVED: Don't dispose here
                                 Navigator.of(context).pop();
                               },
                               icon: const Icon(Icons.close, color: Colors.white),
@@ -611,7 +611,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                                         for (var e in controllers.entries)
                                           e.key: e.value.text
                                       };
-                                      focusNodes.values.forEach((node) => node.dispose());
+                                      // focusNodes.values.forEach((node) => node.dispose()); // REMOVED: Don't dispose here
                                       _bookMultipleSlots(slotPlayerMap);
                                     }
                                   },
@@ -699,7 +699,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: () {
-                                  focusNodes.values.forEach((node) => node.dispose());
+                                  // focusNodes.values.forEach((node) => node.dispose()); // REMOVED: Don't dispose here
                                   Navigator.of(context).pop();
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -726,7 +726,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
                                     for (var entry in controllers.entries)
                                       entry.key: entry.value.text
                                   };
-                                  focusNodes.values.forEach((node) => node.dispose());
+                                  // focusNodes.values.forEach((node) => node.dispose()); // REMOVED: Don't dispose here
                                   _bookMultipleSlots(slotPlayerMap);
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -837,6 +837,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
+          mainAxisSize: MainAxisSize.min, // Added to prevent unbounded height issues
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -1304,6 +1305,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // FIXED: Prevent background resize when keyboard opens in dialog
       backgroundColor: Appcolor.primary,
       body: SafeArea(
         child: !initialDataLoaded

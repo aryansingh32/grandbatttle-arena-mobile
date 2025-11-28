@@ -11,6 +11,7 @@ import 'package:grand_battle_arena/components/home_filter_grid.dart';
 import 'package:grand_battle_arena/theme/theme_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/services/booking_refresh_notifier.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -37,6 +38,10 @@ class _HomeState extends State<Home> {
                 setState(() {
                   _tournamentListKey = UniqueKey();
                 });
+                
+                // Trigger booking refresh
+                Provider.of<BookingRefreshNotifier>(context, listen: false).ping();
+                
                 await Future.delayed(const Duration(milliseconds: 500));
               },
               color: Appcolor.secondary,
@@ -50,8 +55,9 @@ class _HomeState extends State<Home> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TopBar(), // For TopBar
-                      BannerSlider(),
-                      Homegames(), // Games 
+                      // FIXED: Use ValueKey to ensure uniqueness while forcing rebuild
+                      BannerSlider(key: ValueKey('banner_$_tournamentListKey')), 
+                      Homegames(), // Stateless, no key needed
                       //const HomeQuickFilters(), // CHANGE: add stylish quick filters bar.
                       Consumer<ThemeManager>(
                         builder: (context, themeManager, _) {
@@ -77,8 +83,9 @@ class _HomeState extends State<Home> {
                       // but for now let's rely on the child's own refresh mechanism or
                       // just let the user pull to feel the app is "alive".
                       // To truly refresh, we'd need to lift state up.
-                      TournamentCards(key: _tournamentListKey),
-                      HomeLeaderBoard(),
+                      // FIXED: Use ValueKey to ensure uniqueness while forcing rebuild
+                      TournamentCards(key: ValueKey('cards_$_tournamentListKey')),
+                      HomeLeaderBoard(), // Stateless, no key needed
                     ],
                   ),
                 ),

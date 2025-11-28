@@ -280,8 +280,16 @@ class NotificationService {
   /// Show local notification
   /// FIXED: Added showWhen and showBadge as per documentation
   static Future<void> _showLocalNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    if (notification == null) return;
+    // FIXED: Handle data-only messages by falling back to data fields
+    String? title = message.notification?.title;
+    String? body = message.notification?.body;
+
+    if (title == null && message.data.isNotEmpty) {
+       title = message.data['title'] ?? 'New Notification';
+       body = message.data['body'] ?? message.data['message'] ?? '';
+    }
+
+    if (title == null) return;
 
     String channelId = _getChannelIdForNotification(message.data['type'] ?? 'general');
     final String type = message.data['type'] ?? 'general';
@@ -330,8 +338,8 @@ class NotificationService {
 
     await _localNotifications.show(
       message.hashCode,
-      notification.title,
-      notification.body,
+      title,
+      body,
       notificationDetails,
       payload: json.encode(message.data),
     );
@@ -352,7 +360,7 @@ class NotificationService {
       case 'WALLET': // Backend may send uppercase
         return 'wallet_notifications';
       default:
-        return 'tournament_channel'; // Default to tournament_channel as per backend
+        return 'tournament_channel_v2'; // FIXED: Default to v2 which is actually created
     }
   }
 

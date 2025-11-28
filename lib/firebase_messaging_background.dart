@@ -41,11 +41,15 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     iOS: iosDetails,
   );
 
+  // Determine title and body
+  String title = message.notification?.title ?? message.data['title'] ?? 'New Notification';
+  String body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
+
   // Show the notification
   await flutterLocalNotificationsPlugin.show(
     message.hashCode,
-    message.notification?.title ?? 'New Notification',
-    message.notification?.body ?? '',
+    title,
+    body,
     notificationDetails,
     payload: message.data.toString(),
   );

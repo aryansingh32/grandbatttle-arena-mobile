@@ -35,6 +35,11 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   bool _userHasBooking = false;
   List<ParticipantModel> _userParticipants = [];
   
+  // Credentials State
+  String? _realGameId;
+  String? _realGamePassword;
+  bool _isLoadingCredentials = false;
+  
   // Dynamic Background State
   List<Color> _bgColors = [Appcolor.primary, Colors.black];
   int _colorIndex = 0;
@@ -94,6 +99,32 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       _userHasBooking = mine.isNotEmpty;
       _userParticipants = mine;
     });
+    
+    if (_userHasBooking) {
+      _fetchCredentials();
+    }
+  }
+
+  Future<void> _fetchCredentials() async {
+    if (_isLoadingCredentials) return;
+    
+    setState(() => _isLoadingCredentials = true);
+    
+    try {
+      final creds = await ApiService.getTournamentCredentials(widget.tournamentId);
+      if (mounted) {
+        setState(() {
+          _realGameId = creds['gameId'];
+          _realGamePassword = creds['gamePassword'];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching credentials: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingCredentials = false);
+      }
+    }
   }
 
   Future<void> _loadTournamentDetails() async {
@@ -808,6 +839,10 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   }
 
   Widget _buildCredentialCard() {
+    // Use real credentials if available, otherwise fall back to tournament model (which might be hashed)
+    final displayGameId = _realGameId ?? tournament!.gameId ?? '-';
+    final displayPassword = _realGamePassword ?? tournament!.gamePassword ?? '-';
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -819,18 +854,29 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Match Credentials',
-            style: const TextStyle(
-              color: Appcolor.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Match Credentials',
+                style: const TextStyle(
+                  color: Appcolor.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              if (_isLoadingCredentials)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Appcolor.secondary),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
-          _credentialRow('Room ID', tournament!.gameId ?? '-'),
+          _credentialRow('Room ID', displayGameId),
           const SizedBox(height: 8),
-          _credentialRow('Password', tournament!.gamePassword ?? '-'),
+          _credentialRow('Password', displayPassword),
         ],
       ),
     );

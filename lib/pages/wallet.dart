@@ -114,142 +114,148 @@ class _WalletState extends State<Wallet> {
       backgroundColor: Color.fromRGBO(9, 11, 14, 1),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            child: SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(top: 90, bottom: 120),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Text(
-                        "My Wallet",
-                        style: TextStyle(color: Appcolor.white, fontSize: 20),
+          RefreshIndicator(
+            onRefresh: _initializeWallet,
+            color: Appcolor.secondary,
+            backgroundColor: Appcolor.primary,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 90, bottom: 120),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Text(
+                          "My Wallet",
+                          style: TextStyle(color: Appcolor.white, fontSize: 20),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 25),
+                      SizedBox(height: 25),
 
-                    // Balance Display
-                    _buildBalanceHero(),
+                      // Balance Display
+                      _buildBalanceHero(),
 
-                    // Deposit and Withdraw Buttons
-                    Padding(
-                      padding: const EdgeInsets.only(top: 25, bottom: 30),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: () => showDepositPopUp(),
-                            child: Container(
-                              height: 49,
-                              width: 127,
-                              decoration: BoxDecoration(
+                      // Deposit and Withdraw Buttons
+                      Padding(
+                        padding: const EdgeInsets.only(top: 25, bottom: 30),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () => showDepositPopUp(),
+                              child: Container(
+                                height: 49,
+                                width: 127,
+                                decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(6),
+                                    color: Appcolor.secondary),
+                                child: Center(
+                                  child: Text("Deposit",
+                                      style: TextStyle(
+                                          color: Appcolor.primary,
+                                          letterSpacing: 1)),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 20),
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => WithdrawalDialog(
+                                      currentBalance: currentBalance,
+                                      onWithdrawalSuccess: _loadWalletData),
+                                );
+                              },
+                              child: Container(
+                                height: 49,
+                                width: 127,
+                                decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(6),
-                                  color: Appcolor.secondary),
-                              child: Center(
-                                child: Text("Deposit",
-                                    style: TextStyle(
-                                        color: Appcolor.primary,
-                                        letterSpacing: 1)),
+                                  border: Border.all(color: Appcolor.secondary),
+                                ),
+                                child: Center(
+                                  child: Text("Withdraw",
+                                      style: TextStyle(
+                                          color: Appcolor.secondary,
+                                          letterSpacing: 1)),
+                                ),
                               ),
                             ),
-                          ),
-                          SizedBox(width: 20),
-                          GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => WithdrawalDialog(
-                                    currentBalance: currentBalance,
-                                    onWithdrawalSuccess: _loadWalletData),
-                              );
-                            },
-                            child: Container(
-                              height: 49,
-                              width: 127,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Appcolor.secondary),
-                              ),
-                              child: Center(
-                                child: Text("Withdraw",
-                                    style: TextStyle(
-                                        color: Appcolor.secondary,
-                                        letterSpacing: 1)),
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
 
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 20, bottom: 15),
-                        child: Container(
-                            width: 175,
-                            height: 0.5,
-                            decoration: BoxDecoration(color: Appcolor.grey)),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 15),
+                          child: Container(
+                              width: 175,
+                              height: 0.5,
+                              decoration: BoxDecoration(color: Appcolor.grey)),
+                        ),
                       ),
-                    ),
 
-                    if (_isTransactionsLoading || rewardTransactions.isNotEmpty)
+                      if (_isTransactionsLoading || rewardTransactions.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildEarningsScoreboard(),
+                        ),
+
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text("Transactions",
+                            style: TextStyle(
+                                color: Appcolor.white,
+                                fontSize: 20,
+                                letterSpacing: 1)),
+                      ),
+
+                      // Transaction List
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildEarningsScoreboard(),
-                      ),
-
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text("Transactions",
-                          style: TextStyle(
-                              color: Appcolor.white,
-                              fontSize: 20,
-                              letterSpacing: 1)),
-                    ),
-
-                    // Transaction List
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 30),
-                        decoration: BoxDecoration(
-                          color: Appcolor.cardsColor,
-                          borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20)),
-                        ),
-                        height: 500 - 36,
-                        width: double.infinity,
-                        child: _isTransactionsLoading
-                            ? _buildTransactionShimmer()
-                            : transactions.isEmpty
-                                ? Center(
-                                    child: Text("No transactions yet",
-                                        style: TextStyle(color: Appcolor.grey, fontSize: 16)))
-                                : SingleChildScrollView(
-                                    child: Column(
-                                      children: [
-                                        // MODIFIED: Map now passes status and photoUrl to the widget.
-                                        ...transactions.map(
-                                          (transaction) => Padding(
-                                            padding: const EdgeInsets.only(bottom: 16.0),
-                                            child: _buildTransactionLogs(
-                                              transtype: transaction.type,
-                                              amount: transaction.amount,
-                                              date: transaction.date.toIso8601String(),
-                                              status: transaction.status, // Pass status from model
-                                              photoUrl: userPhotoURL, // Pass user photo URL
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 30),
+                          decoration: BoxDecoration(
+                            color: Appcolor.cardsColor,
+                            borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(20),
+                                topRight: Radius.circular(20)),
+                          ),
+                          height: 500 - 36,
+                          width: double.infinity,
+                          child: _isTransactionsLoading
+                              ? _buildTransactionShimmer()
+                              : transactions.isEmpty
+                                  ? Center(
+                                      child: Text("No transactions yet",
+                                          style: TextStyle(color: Appcolor.grey, fontSize: 16)))
+                                  : SingleChildScrollView(
+                                      child: Column(
+                                        children: [
+                                          // MODIFIED: Map now passes status and photoUrl to the widget.
+                                          ...transactions.map(
+                                            (transaction) => Padding(
+                                              padding: const EdgeInsets.only(bottom: 16.0),
+                                              child: _buildTransactionLogs(
+                                                transtype: transaction.type,
+                                                amount: transaction.amount,
+                                                date: transaction.date.toIso8601String(),
+                                                status: transaction.status, // Pass status from model
+                                                photoUrl: userPhotoURL, // Pass user photo URL
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        SizedBox(height: 80),
-                                      ],
+                                          SizedBox(height: 80),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
