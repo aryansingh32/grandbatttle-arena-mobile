@@ -353,12 +353,18 @@ class NotificationService {
       case 'tournament_reminder':
       case 'tournament_result':
       case 'tournament_update':
+      case 'tournament_created':
+      case 'tournament_booking_reminder':
+      case 'tournament_rules':
       case 'TOURNAMENT': // Backend may send uppercase
         return 'tournament_channel_v2'; // FIXED: Changed to match backend v2
       case 'wallet_transaction':
       case 'reward_distribution':
       case 'WALLET': // Backend may send uppercase
         return 'wallet_notifications';
+      case 'event_notification':
+      case 'custom_notification':
+        return 'tournament_channel_v2'; // Use high-priority channel for importance
       default:
         return 'tournament_channel_v2'; // FIXED: Default to v2 which is actually created
     }
@@ -420,15 +426,27 @@ class NotificationService {
         _handleTournamentCredentials(message.data);
         break;
       case 'tournament_reminder':
+      case 'tournament_created':
+      case 'tournament_booking_reminder':
         _handleTournamentReminder(message.data);
         break;
       case 'tournament_result':
       case 'tournament_update':
         _handleTournamentUpdate(message.data);
         break;
+      case 'tournament_rules':
+        _handleTournamentRules(message.data);
+        break;
       case 'wallet_transaction':
       case 'reward_distribution':
         _handleWalletNotification(message.data);
+        break;
+      case 'event_notification':
+        _handleEventNotification(message.data);
+        break;
+      case 'custom_notification':
+        // Custom notifications just navigate to home or show the message
+        print('📬 Custom notification received');
         break;
       default:
         print('Unknown notification type: $type');
@@ -484,6 +502,20 @@ class NotificationService {
 
   static void _handleWalletNotification(Map<String, dynamic> data) {
     _navigateToWallet();
+  }
+
+  static void _handleTournamentRules(Map<String, dynamic> data) {
+    final tournamentId = data['tournamentId'] ?? '';
+    // You can either navigate to tournament or show rules dialog
+    _navigateToTournament(tournamentId);
+  }
+
+  static void _handleEventNotification(Map<String, dynamic> data) {
+    // Navigate to home or events page
+    final context = NavigatorKey.currentContext;
+    if (context != null) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   static void _navigateToTournament(String tournamentId) {
