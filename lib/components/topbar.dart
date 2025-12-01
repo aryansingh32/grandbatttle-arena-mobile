@@ -317,12 +317,13 @@ class _TopBarState extends State<TopBar> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      padding: EdgeInsets.all(4),
-                      child: Image.asset('assets/icons/bell.png'),
-                    ),
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center, // 🔥 FIXED: Center the icon
+                        padding: EdgeInsets.all(4),
+                        child: Image.asset('assets/icons/bell.png'),
+                      ),
                     if (unreadNotificationCount > 0)
                       Positioned(
                         right: -2,

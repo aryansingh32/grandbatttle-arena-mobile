@@ -138,8 +138,11 @@ class _TournamentContentState extends State<TournamentContent> {
                   scrollDirection: Axis.horizontal,
                   child: Consumer<FilterProvider>(
                     builder: (context, filters, _) {
+                      if (filters.isLoading) {
+                        return Center(child: CircularProgressIndicator(strokeWidth: 2));
+                      }
                       return Row(
-                        children: gameFilters.map((filter) {
+                        children: filters.games.map((filter) {
                           bool isSelected = filters.gameFilter == filter;
                           return GestureDetector(
                             onTap: () => filters.setGameFilter(filter),
@@ -191,8 +194,11 @@ class _TournamentContentState extends State<TournamentContent> {
                   scrollDirection: Axis.horizontal,
                   child: Consumer<FilterProvider>(
                     builder: (context, filters, _) {
+                      if (filters.isLoading) {
+                        return SizedBox(); // Hide if loading or show skeleton
+                      }
                       return Row(
-                        children: timeSlots.map((slot) {
+                        children: filters.timeSlots.map((slot) {
                           bool isSelected = filters.timeSlotFilter == slot;
                           return GestureDetector(
                             onTap: () => filters.setTimeSlotFilter(slot),

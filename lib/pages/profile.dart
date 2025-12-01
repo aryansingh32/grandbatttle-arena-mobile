@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:grand_battle_arena/pages/support_page.dart';
+import 'package:grand_battle_arena/pages/terms_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class Profile extends StatefulWidget {
@@ -690,6 +691,17 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SupportPage()),
+            );
+          },
+        ),
+        _ActionTile(
+          icon: Icons.description,
+          title: "Terms and Conditions",
+          subtitle: "Read our terms of service",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const TermsPage()),
             );
           },
         ),
