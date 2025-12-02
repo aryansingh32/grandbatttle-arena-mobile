@@ -64,11 +64,16 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
   }
 
   Future<void> _updatePalette() async {
-    if (tournament?.imageUrl == null) return;
+    if (tournament?.imageUrl == null || tournament!.imageUrl!.isEmpty) return;
     try {
+      // Validate URL before attempting to load
+      final uri = Uri.tryParse(tournament!.imageUrl!);
+      if (uri == null || !uri.hasAbsolutePath) return;
+
       final PaletteGenerator generator = await PaletteGenerator.fromImageProvider(
         NetworkImage(tournament!.imageUrl!),
         size: const Size(200, 100), // Resize for speed
+        timeout: const Duration(seconds: 5), // Add timeout
       );
       
       if (mounted) {
@@ -88,6 +93,12 @@ class _TournamentDetailsPageState extends State<TournamentDetailsPage> {
       }
     } catch (e) {
       debugPrint("Error generating palette: $e");
+      // Fallback to default colors on error
+      if (mounted) {
+        setState(() {
+          _bgColors = [Appcolor.primary, Colors.black];
+        });
+      }
     }
   }
 

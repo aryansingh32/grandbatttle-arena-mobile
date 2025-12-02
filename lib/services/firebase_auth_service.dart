@@ -30,7 +30,8 @@ class FirebaseAuthService {
     try {
       User? user = _firebaseAuth.currentUser;
       if (user != null) {
-        return await user.getIdToken(true);
+        // FIXED: Changed forceRefresh to false to use cached token
+        return await user.getIdToken(false);
       }
       return null;
     } catch (e) {

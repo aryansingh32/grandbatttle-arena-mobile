@@ -6,6 +6,7 @@ import 'package:grand_battle_arena/models/transaction_model.dart';
 import 'package:grand_battle_arena/pages/deposit_page.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/theme/appcolor.dart';
+import 'package:grand_battle_arena/models/payment_amount_model.dart';
 import 'package:shimmer/shimmer.dart';
 
 class Wallet extends StatefulWidget {
@@ -44,8 +45,11 @@ class _WalletState extends State<Wallet> {
     await _getCurrentUser();
     // Only load data if user is successfully authenticated.
     if (userFirebaseUID != null) {
-      await _loadWalletData();
-      await _loadTransactions();
+      // Parallelize data loading
+      await Future.wait([
+        _loadWalletData(),
+        _loadTransactions(),
+      ]);
     }
   }
 
@@ -475,8 +479,8 @@ void showDepositPopUp() async {
                     // Use the fetched depositOptions list here.
                     ...depositOptions.map((option) {
                       return _buildDepositChip(
-                        inr: option.amount,      // Use option.amount
-                        coins: option.coins,    // Use option.coins
+                        inr: option.amount,
+                        coins: option.coins,
                         isSelected: selectedInr == option.amount,
                         onTap: () => setDialogState(() => selectedInr = option.amount),
                       );
@@ -498,14 +502,20 @@ void showDepositPopUp() async {
                       // FIXED: Correctly navigate to the PaymentPage.
                       onTap: selectedInr == null
                           ? null
-                          : () {
+                          : () async {
                               Navigator.pop(context); // Close the dialog first.
-                              Navigator.push(
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => PaymentPage(amount: selectedInr!),
                                 ),
                               );
+                              
+                              // Check if payment was successful and refresh wallet
+                              if (result == true) {
+                                _loadWalletData();
+                                _loadTransactions();
+                              }
                             },
                       child: Container(
                         width: double.infinity,

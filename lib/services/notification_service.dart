@@ -281,12 +281,13 @@ class NotificationService {
   /// FIXED: Added showWhen and showBadge as per documentation
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     // FIXED: Handle data-only messages by falling back to data fields
-    String? title = message.notification?.title;
-    String? body = message.notification?.body;
+    // FIXED: Prioritize data payload for title and body to ensure custom content is shown
+    String? title = message.data['title'] ?? message.notification?.title;
+    String? body = message.data['body'] ?? message.data['message'] ?? message.notification?.body;
 
+    // Fallback if still null
     if (title == null && message.data.isNotEmpty) {
-       title = message.data['title'] ?? 'New Notification';
-       body = message.data['body'] ?? message.data['message'] ?? '';
+       title = 'New Notification';
     }
 
     if (title == null) return;

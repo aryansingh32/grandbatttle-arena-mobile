@@ -7,13 +7,13 @@ class TermsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Appcolor.background,
+      backgroundColor: Appcolor.primary,
       appBar: AppBar(
         title: const Text(
           "Terms and Conditions",
           style: TextStyle(color: Appcolor.white),
         ),
-        backgroundColor: Appcolor.background,
+        backgroundColor: Appcolor.primary,
         iconTheme: const IconThemeData(color: Appcolor.white),
       ),
       body: SingleChildScrollView(

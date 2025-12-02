@@ -790,6 +790,16 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
 
   Widget _buildRewardHighlight() {
     if (tournament == null) return const SizedBox.shrink();
+    
+    final rewards = <Widget>[
+      if (tournament!.perKillCoins > 0) _rewardChip('Per Kill', '+${tournament!.perKillCoins}'),
+      if (tournament!.firstPlacePrize > 0) _rewardChip('1st', '${tournament!.firstPlacePrize}'),
+      if (tournament!.secondPlacePrize > 0) _rewardChip('2nd', '${tournament!.secondPlacePrize}'),
+      if (tournament!.thirdPlacePrize > 0) _rewardChip('3rd', '${tournament!.thirdPlacePrize}'),
+    ];
+
+    if (rewards.isEmpty) return const SizedBox.shrink();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       padding: const EdgeInsets.all(12),
@@ -800,12 +810,7 @@ class _TournamentRegistrationPageState extends State<TournamentRegistrationPage>
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _rewardChip('Per Kill', '+${tournament!.perKillCoins}'),
-          _rewardChip('1st', tournament!.firstPlacePrize.toString()),
-          _rewardChip('2nd', tournament!.secondPlacePrize.toString()),
-          _rewardChip('3rd', tournament!.thirdPlacePrize.toString()),
-        ],
+        children: rewards,
       ),
     );
   }

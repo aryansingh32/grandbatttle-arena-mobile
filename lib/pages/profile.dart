@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:grand_battle_arena/components/mybookingscroller.dart';
 import 'package:grand_battle_arena/models/slots_model.dart';
 import 'package:grand_battle_arena/models/user_model.dart';
+import 'package:grand_battle_arena/models/tournament_model.dart';
 import 'package:grand_battle_arena/models/wallet_model.dart';
 import 'package:grand_battle_arena/services/api_service.dart';
 import 'package:grand_battle_arena/services/auth_state_manager.dart';
@@ -32,6 +33,8 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
   UserModel? _user;
   WalletModel? _wallet;
   List<SlotsModel> _bookedSlots = [];
+  List<TournamentModel> _historyTournaments = [];
+  bool _isHistoryLoading = false;
 
   // Animation controller for shimmer effect
   late AnimationController _shimmerController;
@@ -143,6 +146,38 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
           _isLoading = false;
         });
       }
+    }
+
+    // Load history data after main profile data
+    _loadHistoryTournaments();
+  }
+
+  Future<void> _loadHistoryTournaments() async {
+    if (_bookedSlots.isEmpty) return;
+    
+    setState(() => _isHistoryLoading = true);
+    
+    try {
+      // Sort by booking time descending
+      final sortedSlots = List<SlotsModel>.from(_bookedSlots)
+        ..sort((a, b) => (b.bookedAt ?? DateTime.now()).compareTo(a.bookedAt ?? DateTime.now()));
+        
+      // Take last 5
+      final recentSlots = sortedSlots.take(5).toList();
+      final tournamentIds = recentSlots.map((s) => s.tournamentId).toSet();
+      
+      final futures = tournamentIds.map((id) => ApiService.getTournamentDetails(id));
+      final tournaments = await Future.wait(futures);
+      
+      if (mounted) {
+        setState(() {
+          _historyTournaments = tournaments;
+          _isHistoryLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading history: $e");
+      if (mounted) setState(() => _isHistoryLoading = false);
     }
   }
 
@@ -355,6 +390,8 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
           const SliverToBoxAdapter(
             child: MyBookingsScroller(),
           ),
+          _buildSectionHeader("Match History"),
+          _buildHistorySection(),
           _buildSectionHeader("Account"),
           _buildActionsList(),
         ],
@@ -790,6 +827,113 @@ class _ProfileState extends State<Profile> with TickerProviderStateMixin {
           },
         ),
       ]),
+    );
+  }
+
+  Widget _buildHistorySection() {
+    if (_isHistoryLoading) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildShimmerContainer(double.infinity, 100),
+        ),
+      );
+    }
+
+    if (_historyTournaments.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              "No match history available yet.",
+              style: TextStyle(color: Appcolor.grey),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final tournament = _historyTournaments[index];
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.1)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    image: DecorationImage(
+                      image: tournament.imageUrl != null 
+                        ? NetworkImage(tournament.imageUrl!) 
+                        : const AssetImage("assets/images/freefirebanner4.webp") as ImageProvider,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tournament.title,
+                        style: const TextStyle(
+                          color: Appcolor.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('MMM d, yyyy').format(tournament.startTime),
+                        style: const TextStyle(
+                          color: Appcolor.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Appcolor.secondary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    "Played",
+                    style: TextStyle(
+                      color: Appcolor.secondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        childCount: _historyTournaments.length,
+      ),
     );
   }
 

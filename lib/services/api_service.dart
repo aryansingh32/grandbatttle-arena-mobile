@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:grand_battle_arena/components/bannerslider.dart';
 import 'package:grand_battle_arena/models/available_amount_model.dart';
+import 'package:grand_battle_arena/models/payment_amount_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:grand_battle_arena/services/firebase_auth_service.dart';
 import 'package:grand_battle_arena/models/tournament_model.dart';
@@ -106,8 +107,10 @@ class ApiService {
     if (requireAuth) {
       final token = await FirebaseAuthService.getIdToken();
       if (token == null) {
+        print('⚠️ ApiService: Auth token is null for protected request');
         throw ApiException('Authentication token not available. Please sign in.');
       }
+      print('🔐 ApiService: Adding Bearer token to headers');
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
@@ -275,10 +278,10 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   // ===========================================================================
 
   /// Get QR code link for a specific amount (GET method)
-  /// FIXED: Payment endpoints don't require auth per API reference
+  /// FIXED: Payment endpoints require auth as per logs
   static Future<PaymentQrResponse> getPaymentQrByAmount(int amount) async {
     try {
-      final response = await _get(_ApiEndpoints.getPaymentQrByAmount(amount), requireAuth: false);
+      final response = await _get(_ApiEndpoints.getPaymentQrByAmount(amount), requireAuth: true);
       final data = _handleResponse(response);
        print('✅ Data being passed to fromJson: $data'); 
       return PaymentQrResponse.fromJson(data);
@@ -288,12 +291,12 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   }
 
   /// Get QR code link for a specific amount (POST method - alternative)
-  /// FIXED: Payment endpoints don't require auth per API reference
+  /// FIXED: Payment endpoints require auth as per logs
   static Future<PaymentQrResponse> getPaymentQr(int amount) async {
     try {
       final response = await _post(_ApiEndpoints.paymentQr, 
         body: {'amount': amount},
-        requireAuth: false
+        requireAuth: true
       );
       final data = _handleResponse(response);
       return PaymentQrResponse.fromJson(data);
@@ -303,15 +306,23 @@ static Future<Map<String, String>> getTournamentCredentials(int tournamentId) as
   }
 
   /// Get list of all available payment amounts
-  /// FIXED: Payment endpoints don't require auth per API reference
-  static Future<List<AvailableAmount>> getAvailablePaymentAmounts() async {
+  /// FIXED: Changed requireAuth to true as this is a protected endpoint
+  static Future<List<PaymentAmountModel>> getAvailablePaymentAmounts() async {
     try {
-      final response = await _get(_ApiEndpoints.availableAmounts, requireAuth: false);
+      final response = await _get(_ApiEndpoints.availableAmounts, requireAuth: true);
       final data = _handleResponse(response) as List;
       // Map the list of json objects to a list of AvailableAmount models
-      return data.map((json) => AvailableAmount.fromJson(json)).toList();
+      return data.map((json) => PaymentAmountModel.fromJson(json)).toList();
     } catch (e) {
-      throw PaymentException('Failed to get available payment amounts: ${e.toString()}');
+      print('Error fetching payment amounts: $e');
+      // Return default amounts if API fails
+      return [
+        PaymentAmountModel(amount: 50, coins: 50),
+        PaymentAmountModel(amount: 100, coins: 100),
+        PaymentAmountModel(amount: 200, coins: 200),
+        PaymentAmountModel(amount: 500, coins: 500),
+        PaymentAmountModel(amount: 1000, coins: 1000),
+      ];
     }
   }
 
